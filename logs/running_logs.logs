@@ -1,0 +1,28 @@
+[2026-03-04 09:59:12,341: INFO: configuration]: 📂 Loading config from: configs/config.yaml
+[2026-03-04 09:59:12,343: INFO: utility]: ✅ yaml file: configs/config.yaml loaded successfully
+[2026-03-04 09:59:12,343: INFO: utility]: 📊 Content keys: ['artifacts_root', 'data_ingestion']
+[2026-03-04 09:59:12,344: ERROR: utility]: ❌ Unexpected error reading params.yaml: ❌ YAML file is empty: params.yaml
+[2026-03-04 10:06:34,745: INFO: configuration]: 📂 Loading config from: configs/config.yaml
+[2026-03-04 10:06:34,747: INFO: utility]: ✅ yaml file: configs/config.yaml loaded successfully
+[2026-03-04 10:06:34,747: INFO: utility]: 📊 Content keys: ['artifacts_root', 'data_ingestion']
+[2026-03-04 10:06:34,748: INFO: utility]: ✅ yaml file: params.yaml loaded successfully
+[2026-03-04 10:06:34,748: INFO: utility]: 📊 Content keys: ['model']
+[2026-03-04 10:06:34,748: INFO: configuration]: 📂 Creating artifacts root: artifacts
+[2026-03-04 10:06:34,749: INFO: utility]: created directory at: artifacts
+[2026-03-04 10:06:34,749: INFO: configuration]: 🔍 Getting data ingestion configuration...
+[2026-03-04 10:06:34,749: INFO: configuration]: 📁 Creating root directory: artifacts/data_ingestion
+[2026-03-04 10:06:34,749: INFO: utility]: created directory at: artifacts/data_ingestion
+[2026-03-04 10:06:34,749: INFO: configuration]: 🔑 Looking up URL for key: 'DATA_SOURCE'
+[2026-03-04 10:11:14,319: INFO: configuration]: 📂 Loading config from: configs/config.yaml
+[2026-03-04 10:11:14,320: INFO: utility]: ✅ yaml file: configs/config.yaml loaded successfully
+[2026-03-04 10:11:14,320: INFO: utility]: 📊 Content keys: ['artifacts_root', 'data_ingestion']
+[2026-03-04 10:11:14,321: INFO: utility]: ✅ yaml file: params.yaml loaded successfully
+[2026-03-04 10:11:14,321: INFO: utility]: 📊 Content keys: ['model']
+[2026-03-04 10:11:14,321: INFO: configuration]: 📂 Creating artifacts root: artifacts
+[2026-03-04 10:11:14,322: INFO: utility]: created directory at: artifacts
+[2026-03-04 10:11:14,322: INFO: configuration]: 🔍 Getting data ingestion configuration...
+[2026-03-04 10:11:14,322: INFO: configuration]: 📁 Creating root directory: artifacts/data_ingestion
+[2026-03-04 10:11:14,322: INFO: utility]: created directory at: artifacts/data_ingestion
+[2026-03-04 10:11:14,322: INFO: configuration]: ✅ Found URL for key: https://us-west-1.console.aws.amazon.com/s3/object/bucketdrone1?region=us-west-1&prefix=train_data/deep-weed.zip
+[2026-03-04 10:11:14,322: INFO: configuration]: 📦 Dataset URL: https://us-west-1.console.aws.amazon.com/s3/object...
+[2026-03-04 10:11:14,322: INFO: configuration]: ✅ Data ingestion configuration created successfully
