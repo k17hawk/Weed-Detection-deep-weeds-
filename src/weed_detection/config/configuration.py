@@ -34,7 +34,7 @@ class ConfigurationManager:
         source_url = DATA_SOURCE
         
         logger.info(f"✅ Found URL for key: {source_url}")
-        logger.info(f"📦 Dataset URL: {source_url[:50]}...")  # Print first 50 chars of URL
+        logger.info(f"📦 Dataset URL: {source_url[:50]}...")  
 
         # Create config object
         data_ingestion_config = DataIngestionConfig(
@@ -43,13 +43,6 @@ class ConfigurationManager:
             local_data_file=Path(config.local_data_file),
             unzip_dir=Path(config.unzip_dir) 
         )
-        
-        # This will print the config object
-        print("\n" + "="*50)
-        print("📊 DATA INGESTION CONFIGURATION:")
-        print("="*50)
-        print(data_ingestion_config)
-        print("="*50 + "\n")
         
         logger.info("✅ Data ingestion configuration created successfully")
         
