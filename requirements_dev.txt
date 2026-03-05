@@ -1,6 +1,6 @@
 boto3
 python-dotenv
-
+kafka-python
  
  pyyaml 
  python-box 
