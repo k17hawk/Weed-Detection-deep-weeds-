@@ -1,6 +1,8 @@
 boto3
 python-dotenv
 kafka-python
+ pillow
+
  
  pyyaml 
  python-box 
