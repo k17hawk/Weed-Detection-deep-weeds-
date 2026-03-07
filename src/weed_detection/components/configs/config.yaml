@@ -1,0 +1,12 @@
+artifacts_root: artifacts
+
+data_ingestion:
+  root_dir: artifacts/data_ingestion
+  source_URL: ${DATA_SOURCE}
+  local_data_file: artifacts/data_ingestion/data.zip
+  unzip_dir: artifacts/data_ingestion
+
+kafka:
+  bootstrap_servers: localhost:9092
+  topic: drone-images-topic
+  consumer_group: drone-group
