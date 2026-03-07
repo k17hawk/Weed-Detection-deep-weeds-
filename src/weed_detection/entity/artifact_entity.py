@@ -1,5 +1,4 @@
-# entity/artifact_entity.py
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from datetime import datetime
 from typing import Optional, List
@@ -9,41 +8,46 @@ from typing import Optional, List
 class KafkaArtifact:
     """
     Produced by : kafka_consumer.py
-    Consumed by : data_ingestion component  (passed as input)
+    Consumed by : data_ingestion component
 
-    Represents one zip archive received from Kafka and saved to disk.
-    DataIngestion reads this artifact to know where the zip lives.
+    Represents one valid zip received from Kafka and saved locally.
+    Persisted as:  artifacts/data_ingestion/kafka_data/latest_artifact.json
     """
     # ── storage ───────────────────────────────────────────────────────────────
-    kafka_data_dir  : Path          # artifacts/data_ingestion/kafka_data/
-    version_dir     : Path          # kafka_data/v_YYYYMMDD_HHMMSS/
-    zip_file_path   : Path          # version_dir/<hash>_<name>.zip
+    kafka_data_dir   : Path     # artifacts/data_ingestion/kafka_data/
+    version_dir      : Path     # kafka_data/v_YYYYMMDD_HHMMSS/
+    zip_file_path    : Path     # version_dir/<hash>_<filename>.zip
 
     # ── S3 origin ─────────────────────────────────────────────────────────────
-    s3_bucket       : str
-    s3_key          : str
-    source_url      : str           # DATA_SOURCE env var
+    s3_bucket        : str
+    s3_key           : str
+    source_url       : str
 
-    # ── file metadata ─────────────────────────────────────────────────────────
-    file_hash       : str           # SHA-256[:16] of zip bytes
-    file_size_bytes : int
-    original_filename: str
+    # ── file info ─────────────────────────────────────────────────────────────
+    file_hash        : str      # SHA-256[:16]
+    file_size_bytes  : int
+    original_filename: str      # e.g. drone_20260307_201234.zip
 
     # ── kafka provenance ──────────────────────────────────────────────────────
-    kafka_topic     : str
-    kafka_partition : int
-    kafka_offset    : int
+    kafka_topic      : str
+    kafka_partition  : int
+    kafka_offset     : int
 
     # ── timing ────────────────────────────────────────────────────────────────
-    received_at     : datetime
+    received_at      : datetime
 
-    # ── artifact JSON path (set after persistence) ────────────────────────────
-    artifact_path   : Optional[Path] = None
+    # ── self reference (set after JSON is written) ────────────────────────────
+    artifact_path    : Optional[Path] = None
 
 
 @dataclass(frozen=True)
 class DataIngestionArtifact:
-    """Artifact produced by data ingestion component"""
+    """
+    Produced by : data_ingestion component
+    Consumed by : data_validation component
+
+    Represents a fully extracted and normalized dataset.
+    """
     root_dir         : Path
     source_url       : str
     version_directory: Path
@@ -55,5 +59,4 @@ class DataIngestionArtifact:
 
     @property
     def processing_dir(self) -> Path:
-        """Get the directory with symlinks for processing"""
         return self.root_dir / "processing"
