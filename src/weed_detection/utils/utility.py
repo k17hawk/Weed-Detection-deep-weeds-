@@ -10,11 +10,18 @@ from box import ConfigBox
 from pathlib import Path
 from typing import Any
 
-
 @ensure_annotations
 def read_yaml(path_to_yaml: Path) -> ConfigBox:
     """reads yaml file and returns ConfigBox"""
+    print("--"*100)
+    print(path_to_yaml)
+    print("--"*100)
     try:
+        # Remove this line: path_to_yaml = Path('configs/config.yaml').absolute()
+        
+        # Ensure we have a Path object and get absolute path
+        path_to_yaml = Path(path_to_yaml).absolute()
+        
         # Check if file exists
         if not path_to_yaml.exists():
             raise FileNotFoundError(f"❌ YAML file not found: {path_to_yaml}")

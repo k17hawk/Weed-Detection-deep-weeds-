@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "weed_detection"
+version = "0.0.0"
+authors = [
+    {name = "k17hawk", email = "kumardahal536@gmail.com"},
+]
+description = "A project for mlops"
+readme = "README.md"
+requires-python = ">=3.11"
+
+[project.urls]
+Homepage = "https://github.com/k17hawk/Weed-Detection-deep-weeds-"
+"Bug Tracker" = "https://github.com/k17hawk/Weed-Detection-deep-weeds-/issues"
