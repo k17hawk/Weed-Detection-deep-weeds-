@@ -1,1 +1,1 @@
-from src.weed_detection.constants import *
+from weed_detection.constants import *

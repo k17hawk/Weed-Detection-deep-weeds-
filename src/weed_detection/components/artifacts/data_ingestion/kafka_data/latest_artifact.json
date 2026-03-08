@@ -1,0 +1,15 @@
+{
+  "kafka_data_dir": "artifacts/data_ingestion/kafka_data",
+  "version_dir": "artifacts/data_ingestion/kafka_data/v_20260307_161059",
+  "zip_file_path": "artifacts/data_ingestion/kafka_data/v_20260307_161059/2304dd48d4c417f1_drone_20260307_201203.zip",
+  "s3_bucket": "aws-drone-combined",
+  "s3_key": "drone_20260307_201203.zip",
+  "source_url": "https://us-west-1.console.aws.amazon.com/s3/object/bucketdrone1?region=us-west-1&prefix=train_data/deep-weed.zip",
+  "file_hash": "2304dd48d4c417f1",
+  "file_size_bytes": 13098,
+  "original_filename": "drone_20260307_201203.zip",
+  "kafka_topic": "drone-images-topic",
+  "kafka_partition": 0,
+  "kafka_offset": 10,
+  "received_at": "2026-03-07T16:10:59.831269"
+}

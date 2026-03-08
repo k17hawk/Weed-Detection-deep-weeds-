@@ -1,18 +1,21 @@
 import os
 import sys
 import logging
+from datetime import datetime
 
 logging_str = "[%(asctime)s: %(levelname)s: %(module)s]: %(message)s"
 log_dir = "logs"
-log_filepath = os.path.join(log_dir,"running_logs.logs")
-os.makedirs(log_dir,exist_ok=True)
+timestamp = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")  
+logs_file_name = f"{timestamp}_log.logs"
+log_filepath = os.path.join(log_dir, logs_file_name)  
+os.makedirs(log_dir, exist_ok=True)
 
 logging.basicConfig(
-    level = logging.INFO,
-    format = logging_str,
+    level=logging.INFO,
+    format=logging_str,
     handlers=[
         logging.FileHandler(log_filepath),
         logging.StreamHandler(sys.stdout),
     ]
 )
-logger = logging.getLogger("deepclassifier")
+logger = logging.getLogger("weed detection logger")

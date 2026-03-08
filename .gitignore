@@ -208,3 +208,6 @@ __marimo__/
 .conda/
 conda/
 *.egg*
+artifacts/
+logs/
+data_ingestion/
