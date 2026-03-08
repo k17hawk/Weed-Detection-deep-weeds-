@@ -1,9 +1,11 @@
 artifacts_root: artifacts
 
-
 data_ingestion:
   root_dir: artifacts/data_ingestion
-  source_URL: deep_weeds
-  local_data_file: artifacts/data_ingestion/data.zip
+  source_URL: ${DATA_SOURCE}
   unzip_dir: artifacts/data_ingestion
 
+kafka:
+  bootstrap_servers: localhost:9092
+  topic: drone-images-topic
+  consumer_group: drone-group

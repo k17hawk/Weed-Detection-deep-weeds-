@@ -1,58 +1,100 @@
-import os
+# weed_detection/config/configuration.py
 from pathlib import Path
-from ensure import ensure_annotations
 from weed_detection import logger
-from weed_detection.constants.constant import DATA_SOURCE, CONFIG_FILE_PATH, PARAMS_FILE_PATH
+from weed_detection.constants.constant import (
+    CONFIG_FILE_PATH, PARAMS_FILE_PATH,
+    AWS_ACCESS_KEY, AWS_SECRET_KEY, AWS_REGION,
+    DATA_SOURCE, QUEUE_URL,
+)
 from weed_detection.utils.utility import read_yaml, create_directories
-from weed_detection.entity.config_entity import DataIngestionConfig
+from weed_detection.entity.config_entity import (
+    KafkaProducerConfig,
+    KafkaConsumerConfig,
+    DataIngestionConfig,
+)
 
 
 class ConfigurationManager:
     def __init__(
-        self, 
+        self,
         config_filepath = CONFIG_FILE_PATH,
-        params_filepath = PARAMS_FILE_PATH):
-        
-        logger.info(f"📂 Loading config from: {config_filepath}")
+        params_filepath = PARAMS_FILE_PATH,
+    ):
         self.config = read_yaml(config_filepath)
-        self.params = read_yaml(params_filepath)
-       
-        
-        logger.info(f"📂 Creating artifacts root: {self.config.artifacts_root}")
+
+        try:
+            self.params = read_yaml(params_filepath)
+        except FileNotFoundError:
+            logger.warning("⚠️  params.yaml not found – skipping (not needed for ingestion)")
+            self.params = None
+
         create_directories([self.config.artifacts_root])
 
-    def get_data_ingestion_config(self) -> DataIngestionConfig:
-        logger.info("🔍 Getting data ingestion configuration...")
-    
-        config = self.config.data_ingestion
-        
-        logger.info(f"📁 Creating root directory: {config.root_dir}")
-        create_directories([config.root_dir])
+    # ── Kafka producer ────────────────────────────────────────────────────────
 
-        
-        # Get actual URL from constants
-        source_url = DATA_SOURCE
-        
-        logger.info(f"✅ Found URL for key: {source_url}")
-        logger.info(f"📦 Dataset URL: {source_url[:50]}...")  # Print first 50 chars of URL
-
-        # Create config object
-        data_ingestion_config = DataIngestionConfig(
-            root_dir=Path(config.root_dir),
-            source_URL=source_url,  
-            local_data_file=Path(config.local_data_file),
-            unzip_dir=Path(config.unzip_dir) 
+    def get_kafka_producer_config(self) -> KafkaProducerConfig:
+        kafka = self.config.kafka
+        config = KafkaProducerConfig(
+            bootstrap_servers    = kafka.bootstrap_servers,
+            topic                = kafka.topic,
+            aws_region           = AWS_REGION,
+            queue_url            = QUEUE_URL,
+            aws_access_key_id    = AWS_ACCESS_KEY,
+            aws_secret_access_key= AWS_SECRET_KEY,
         )
-        
-        # This will print the config object
-        print("\n" + "="*50)
-        print("📊 DATA INGESTION CONFIGURATION:")
-        print("="*50)
-        print(data_ingestion_config)
-        print("="*50 + "\n")
-        
-        logger.info("✅ Data ingestion configuration created successfully")
-        
-        return data_ingestion_config
+        logger.info(f"✅ KafkaProducerConfig – topic: {config.topic}")
+        return config
 
+    # ── Kafka consumer ────────────────────────────────────────────────────────
 
+    def get_kafka_consumer_config(self) -> KafkaConsumerConfig:
+        kafka = self.config.kafka
+        di    = self.config.data_ingestion
+
+        kafka_data_dir   = Path(di.kafka_data_dir)
+        bad_raw_data_dir = Path(di.bad_raw_data_dir)
+        create_directories([kafka_data_dir, bad_raw_data_dir])
+
+        config = KafkaConsumerConfig(
+            broker          = kafka.bootstrap_servers,
+            topic           = kafka.topic,
+            group_id        = kafka.consumer_group,
+            kafka_data_dir  = kafka_data_dir,
+            bad_raw_data_dir= bad_raw_data_dir,
+        )
+        logger.info(f"✅ KafkaConsumerConfig – good: {kafka_data_dir}  bad: {bad_raw_data_dir}")
+        return config
+
+    # ── Data ingestion ────────────────────────────────────────────────────────
+
+    def get_data_ingestion_config(self) -> DataIngestionConfig:
+        di = self.config.data_ingestion
+
+        root_dir              = Path(di.root_dir)
+        kafka_data_dir        = Path(di.kafka_data_dir)
+        bad_raw_data_dir      = Path(di.bad_raw_data_dir)
+        unzip_dir             = Path(di.unzip_dir)
+        normalized_dir        = Path(di.normalized_dir)
+        local_data_file       = Path(di.local_data_file)
+        artifact_path         = Path(di.artifact_path)
+        ingestion_state_path  = Path(di.ingestion_state_path)
+
+        create_directories([
+            root_dir, kafka_data_dir, bad_raw_data_dir, unzip_dir, normalized_dir
+        ])
+
+        config = DataIngestionConfig(
+            root_dir             = root_dir,
+            kafka_data_dir       = kafka_data_dir,
+            bad_raw_data_dir     = bad_raw_data_dir,
+            unzip_dir            = unzip_dir,
+            normalized_dir       = normalized_dir,
+            local_data_file      = local_data_file,
+            artifact_path        = artifact_path,
+            ingestion_state_path = ingestion_state_path,
+        )
+        logger.info(f"✅ DataIngestionConfig ready")
+        logger.info(f"   Root       : {root_dir}")
+        logger.info(f"   Unzip      : {unzip_dir}")
+        logger.info(f"   Normalized : {normalized_dir}")
+        return config
