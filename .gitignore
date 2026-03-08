@@ -210,3 +210,4 @@ conda/
 *.egg*
 artifacts/
 logs/
+data_ingestion/
