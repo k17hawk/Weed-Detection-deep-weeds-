@@ -1,6 +1,6 @@
+
 import json
 import time
-import base64
 import boto3
 from weed_detection import logger
 from weed_detection.entity.config_entity import KafkaProducerConfig
@@ -9,10 +9,13 @@ from kafka import KafkaProducer
 
 
 class KafkaDataProducer:
+
     def __init__(self, config: KafkaProducerConfig):
         self.config     = config
         self.producer   = None
         self.sqs_client = None
+
+    # ── initialize ────────────────────────────────────────────────────────────
 
     def initialize(self):
         logger.info("🚀 Initializing Kafka Producer…")
@@ -31,37 +34,24 @@ class KafkaDataProducer:
             aws_secret_access_key = self.config.aws_secret_access_key,
         )
 
-        logger.info(f"✅ Producer ready – topic  : {self.config.topic}")
-        logger.info(f"✅ Producer ready – queue  : {self.config.queue_url}")
+        logger.info(f"✅ Producer ready")
+        logger.info(f"   Topic  : {self.config.topic}")
+        logger.info(f"   Queue  : {self.config.queue_url}")
+        logger.info(f"   Mode   : S3 pointer only — no file download")
 
-    def download_from_s3(self, bucket: str, key: str):
-        """Download file from S3, return (base64_str, size_bytes)."""
-        try:
-            s3 = boto3.client(
-                "s3",
-                region_name           = self.config.aws_region,
-                aws_access_key_id     = self.config.aws_access_key_id,
-                aws_secret_access_key = self.config.aws_secret_access_key,
-            )
-            logger.info(f"⬇️  Downloading s3://{bucket}/{key}")
-            response = s3.get_object(Bucket=bucket, Key=key)
-            content  = response["Body"].read()
-            encoded  = base64.b64encode(content).decode("utf-8")
-            logger.info(f"✅ Downloaded {len(content):,} bytes")
-            return encoded, len(content)
-        except Exception as e:
-            logger.error(f"❌ S3 download failed: {e}")
-            return None, 0
+    # ── process one SQS message ───────────────────────────────────────────────
 
-    def process_sqs_message(self, sqs_message: dict):
+    def process_sqs_message(self, sqs_message: dict) -> dict:
         """
-        Parse SQS message → resolve bucket+key → download zip → build Kafka message.
+        Parse SQS message body → extract bucket + key → return Kafka pointer.
 
-        Handles 4 formats:
-          1. Lambda flat  : body has 'bucket' + 'file_key'   ← current setup
-          2. Direct       : body has 'bucket' + 'key'
-          3. SNS-wrapped  : body has 'Message' (JSON string) with Records
-          4. Raw S3 event : body has 'Records'
+        Handles 4 SQS body formats:
+          Format 1 – Lambda flat   : { bucket, file_key }         ← current setup
+          Format 2 – Direct        : { bucket, key }
+          Format 3 – SNS-wrapped   : { Message: "{ Records: [...] }" }
+          Format 4 – Raw S3 event  : { Records: [...] }
+
+        Returns ~200 byte pointer dict. Zip file stays in S3.
         """
         try:
             body = json.loads(sqs_message["Body"])
@@ -70,18 +60,19 @@ class KafkaDataProducer:
             bucket = None
             key    = None
 
-            # Format 1 – Lambda direct (your current setup)
+            # Format 1 – Lambda direct (current Lambda setup)
             if "bucket" in body and "file_key" in body:
                 bucket = body["bucket"]
                 key    = body["file_key"]
-                logger.info(f"📨 Lambda message → s3://{bucket}/{key}")
+                logger.info(f"📨 Format 1 (Lambda) → s3://{bucket}/{key}")
 
             # Format 2 – direct bucket + key
             elif "bucket" in body and "key" in body:
                 bucket = body["bucket"]
                 key    = body["key"]
+                logger.info(f"📨 Format 2 (Direct) → s3://{bucket}/{key}")
 
-            # Format 3 – SNS wrapper
+            # Format 3 – SNS-wrapped
             elif "Message" in body:
                 try:
                     inner = json.loads(body["Message"])
@@ -89,7 +80,7 @@ class KafkaDataProducer:
                         record = inner["Records"][0]
                         bucket = record["s3"]["bucket"]["name"]
                         key    = record["s3"]["object"]["key"]
-                        logger.info(f"📨 SNS-wrapped → s3://{bucket}/{key}")
+                        logger.info(f"📨 Format 3 (SNS) → s3://{bucket}/{key}")
                 except (json.JSONDecodeError, KeyError):
                     pass
 
@@ -98,99 +89,94 @@ class KafkaDataProducer:
                 record = body["Records"][0]
                 bucket = record["s3"]["bucket"]["name"]
                 key    = record["s3"]["object"]["key"]
+                logger.info(f"📨 Format 4 (S3 Records) → s3://{bucket}/{key}")
 
-            # ── base message ──────────────────────────────────────────────────
+            if not bucket or not key:
+                logger.warning(f"⚠️  Could not extract bucket/key from SQS body")
+                logger.warning(f"   Keys present: {list(body.keys())}")
+                return None
+
+            # ── build pointer message ─────────────────────────────────────────
+            # ~200 bytes regardless of zip file size
             kafka_message = {
+                "bucket"        : bucket,
+                "key"           : key,
+                "has_file"      : True,
                 "timestamp"     : time.time(),
                 "sqs_message_id": sqs_message["MessageId"],
                 "source"        : "sqs_bridge",
-                "file_name"     : body.get("file_name",  ""),
-                "file_type"     : body.get("file_type",  ""),
-                "file_size"     : body.get("file_size",   0),
-                "event_time"    : body.get("event_time",  ""),
-                "aws_region"    : body.get("aws_region",  ""),
+                "aws_region"    : self.config.aws_region,
             }
 
-            if bucket and key:
-                logger.info(f"📦 Downloading s3://{bucket}/{key} …")
-                content, size = self.download_from_s3(bucket, key)
-
-                if content:
-                    kafka_message.update({
-                        "bucket"    : bucket,
-                        "key"       : key,
-                        "content"   : content,
-                        "size_bytes": size,
-                        "has_file"  : True,
-                    })
-                    logger.info(f"✅ File included ({size:,} bytes)")
-                else:
-                    kafka_message.update({
-                        "bucket"  : bucket,
-                        "key"     : key,
-                        "has_file": False,
-                    })
-                    logger.warning("⚠️  Metadata only – S3 download failed")
-            else:
-                logger.warning(f"📄 No S3 info found\n   Keys: {list(body.keys())}")
-                kafka_message.update({
-                    "original_message": body,
-                    "has_file"        : False,
-                })
-
+            logger.info(
+                f"📦 Pointer ready → s3://{bucket}/{key}  "
+                f"(~{len(json.dumps(kafka_message))} bytes)"
+            )
             return kafka_message
 
         except Exception as e:
             logger.error(f"❌ Error processing SQS message: {e}")
             return None
 
+    # ── main polling loop ─────────────────────────────────────────────────────
+
     def run(self, poll_interval: int = 1):
         if not self.producer or not self.sqs_client:
             self.initialize()
 
-        logger.info("🔄 Starting SQS → Kafka bridge…")
+        logger.info("🔄 Polling SQS…  (Ctrl+C to stop)")
         message_count = 0
 
         while True:
             try:
                 response = self.sqs_client.receive_message(
-                    QueueUrl          = self.config.queue_url,
-                    MaxNumberOfMessages= 10,
-                    WaitTimeSeconds   = 5,
-                    VisibilityTimeout = 30,
+                    QueueUrl            = self.config.queue_url,
+                    MaxNumberOfMessages = 10,
+                    WaitTimeSeconds     = 5,    # long poll — reduces empty responses
+                    VisibilityTimeout   = 30,
                 )
 
                 if "Messages" in response:
-                    logger.info(f"📥 Received {len(response['Messages'])} message(s) from SQS")
+                    logger.info(
+                        f"📥 {len(response['Messages'])} message(s) from SQS"
+                    )
 
-                    for sqs_message in response["Messages"]:
+                    for sqs_msg in response["Messages"]:
                         message_count += 1
-                        logger.info(f"📦 Processing #{message_count} (ID: {sqs_message['MessageId'][:8]}…)")
+                        logger.info(
+                            f"\n📦 Message #{message_count}  "
+                            f"ID: {sqs_msg['MessageId'][:8]}…"
+                        )
 
-                        kafka_message = self.process_sqs_message(sqs_message)
+                        kafka_message = self.process_sqs_message(sqs_msg)
 
                         if kafka_message:
-                            future = self.producer.send(self.config.topic, value=kafka_message)
+                            future = self.producer.send(
+                                self.config.topic, value=kafka_message
+                            )
                             result = future.get(timeout=10)
                             logger.info(
-                                f"✅ Sent → topic={result.topic} "
-                                f"partition={result.partition} offset={result.offset}"
+                                f"✅ Sent → topic={result.topic}  "
+                                f"partition={result.partition}  "
+                                f"offset={result.offset}"
                             )
 
+                            # delete from SQS so it's not reprocessed
                             self.sqs_client.delete_message(
                                 QueueUrl     = self.config.queue_url,
-                                ReceiptHandle= sqs_message["ReceiptHandle"],
+                                ReceiptHandle= sqs_msg["ReceiptHandle"],
                             )
                             logger.info("🗑️  Deleted from SQS")
+                        else:
+                            logger.warning("⚠️  Skipped — could not build Kafka message")
 
                     self.producer.flush()
-                    logger.info(f"✅ Flushed {message_count} messages")
 
             except KeyboardInterrupt:
-                logger.info("👋 Shutting down producer…")
+                logger.info("\n👋 Shutting down producer…")
                 break
             except Exception as e:
-                logger.error(f"❌ Error: {e}")
+                logger.error(f"❌ Error in poll loop: {e}")
                 time.sleep(5)
 
             time.sleep(poll_interval)
@@ -212,18 +198,12 @@ def main():
     config         = config_manager.get_kafka_producer_config()
 
     if not config.queue_url:
-        logger.error("❌ QUEUE_URL not set in .env")
-        exit(1)
+        logger.error("❌ QUEUE_URL not set in .env"); exit(1)
     if not config.aws_access_key_id or not config.aws_secret_access_key:
-        logger.error("❌ AWS credentials not set in .env")
-        exit(1)
+        logger.error("❌ AWS credentials not set in .env"); exit(1)
 
     producer = KafkaDataProducer(config)
     producer.initialize()
-
-    logger.info(f"   Broker : {config.bootstrap_servers}")
-    logger.info(f"   Topic  : {config.topic}")
-    logger.info(f"   Queue  : {config.queue_url}")
 
     try:
         producer.run()
