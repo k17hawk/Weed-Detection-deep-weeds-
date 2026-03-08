@@ -29,9 +29,11 @@ class KafkaConsumerConfig:
 
 @dataclass(frozen=True)
 class DataIngestionConfig:
-    """Data ingestion config – reads KafkaArtifact, unzips, normalizes."""
-    root_dir        : Path   # artifacts/data_ingestion/
-    kafka_data_dir  : Path   # artifacts/data_ingestion/kafka_data/
-    bad_raw_data_dir: Path   # artifacts/data_ingestion/bad_raw_data/
-    unzip_dir       : Path   # artifacts/data_ingestion/unzipped/
-    local_data_file : Path   # kafka_data/latest_artifact.json  (pointer)
+    root_dir             : Path   # artifacts/data_ingestion/
+    kafka_data_dir       : Path   # artifacts/data_ingestion/kafka_data/
+    bad_raw_data_dir     : Path   # artifacts/data_ingestion/bad_raw_data/
+    unzip_dir            : Path   # artifacts/data_ingestion/unzipped/
+    normalized_dir       : Path   # artifacts/data_ingestion/normalized/
+    local_data_file      : Path   # kafka_data/latest_artifact.json
+    artifact_path        : Path   # artifacts/data_ingestion/data_ingestion_artifact.json
+    ingestion_state_path : Path   # artifacts/data_ingestion/ingestion_state.json

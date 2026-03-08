@@ -208,5 +208,5 @@ __marimo__/
 .conda/
 conda/
 *.egg*
-artifact/
+artifacts/
 logs/

@@ -42,21 +42,26 @@ class KafkaArtifact:
 
 @dataclass(frozen=True)
 class DataIngestionArtifact:
-    """
-    Produced by : data_ingestion component
-    Consumed by : data_validation component
+    kafka_artifact   : KafkaArtifact   # which zip this came from
+    unzip_dir        : Path      
+          # raw extracted contents
+    normalized_dir   : Path            # normalized images + labels
 
-    Represents a fully extracted and normalized dataset.
-    """
-    root_dir         : Path
-    source_url       : str
-    version_directory: Path
-    ingested_files   : List[Path]
-    metadata_files   : List[Path]
-    timestamp        : datetime
-    file_count       : int
-    manifest_path    : Optional[Path] = None
+    
+    train_images_dir : Path
+    train_labels_dir : Path
+    val_images_dir   : Optional[Path]  = None
+    val_labels_dir   : Optional[Path]  = None
 
+    
+    source_type      : str             = "unknown" 
+    total_images     : int             = 0
+    total_labels     : int             = 0
+    splits           : List[str]       = field(default_factory=list)
+    warnings         : List[str]       = field(default_factory=list)
+
+    artifact_path    : Optional[Path]  = None
+    
     @property
     def processing_dir(self) -> Path:
         return self.root_dir / "processing"
