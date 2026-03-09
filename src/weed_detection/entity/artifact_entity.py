@@ -100,6 +100,43 @@ class DataIngestionArtifact:
 
 @dataclass(frozen=True)
 class DataValidationArtifact:
+    """
+    Produced by : data_validation.py
+    Consumed by : data_transformation.py
+
+    Written to:
+      artifacts/data_validation/validation_report.json   ← full findings
+      artifacts/data_validation/validation_state.json    ← version lock
+
+    is_valid=False means at least one hard failure was found.
+    Downstream stages must check is_valid before proceeding.
+
+    Hard failures (is_valid=False):
+      - Schema mismatch (missing/wrong columns in any CSV)
+      - >5% of CSV filenames missing from disk (configurable threshold)
+      - Label values outside valid range [0..8]
+      - Corrupt / unreadable image files
+
+    Soft warnings (pipeline continues):
+      - Images on disk not referenced in CSV
+      - Class imbalance (any class < 1% of split)
+      - Classes present in train but absent in val or test
+      - Cross-split filename duplicates (leakage risk)
+
+    class_distribution layout:
+      {
+        "train": {"0": 120, "1": 85, ...},
+        "val"  : {"0": 30,  "1": 20, ...},
+        "test" : {"0": 28,  "1": 22, ...},
+      }
+
+    split_stats layout:
+      {
+        "train": {"images_on_disk": 1800, "csv_rows": 1800, "corrupt": 0},
+        "val"  : {"images_on_disk": 450,  "csv_rows": 450,  "corrupt": 0},
+        "test" : {"images_on_disk": 450,  "csv_rows": 450,  "corrupt": 0},
+      }
+    """
     # ── lineage ───────────────────────────────────────────────────────────────
     ingestion_artifact   : DataIngestionArtifact   # full lineage back to zip
 
@@ -119,36 +156,3 @@ class DataValidationArtifact:
 
     # ── artifact persistence ──────────────────────────────────────────────────
     validation_report_path: Optional[Path] = None   # validation_report.json
-
-  
-
-@dataclass(frozen=True)
-class DataTransformationArtifact:
-    # ── lineage ───────────────────────────────────────────────────────────────
-    validation_artifact      : DataValidationArtifact
-
-    # ── split paths (mirrors DataIngestionArtifact for trainer convenience) ──
-    train_images_dir         : Path
-    train_csv_path           : Path
-    val_images_dir           : Optional[Path]
-    val_csv_path             : Optional[Path]
-    test_images_dir          : Optional[Path]
-    test_csv_path            : Optional[Path]
-
-    # ── class imbalance ───────────────────────────────────────────────────────
-    class_weights_path       : Path          # JSON list, index = label int
-    class_weights            : List[float]   # in-memory copy for trainer
-
-    # ── transforms ────────────────────────────────────────────────────────────
-    transform_config_path    : Path          # JSON — full transform spec
-    input_size               : int           # 224
-
-    # ── dataloader params ─────────────────────────────────────────────────────
-    batch_size               : int
-    num_workers              : int
-    sampler                  : str           # weighted | none
-    pin_memory               : bool
-
-    # ── timing + persistence ──────────────────────────────────────────────────
-    transformed_at           : datetime
-    artifact_path            : Optional[Path] = None
