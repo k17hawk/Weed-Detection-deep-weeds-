@@ -11,7 +11,8 @@ from weed_detection.entity.config_entity import (
     KafkaProducerConfig,
     KafkaConsumerConfig,
     DataIngestionConfig,
-    DataValidationConfig
+    DataValidationConfig,
+    DataTransformationConfig
 )
 
 
@@ -141,4 +142,46 @@ class ConfigurationManager:
         logger.info(f"   Valid labels      : [{config.valid_label_min}..{config.valid_label_max}]")
         logger.info(f"   Imbalance thresh  : {config.imbalance_threshold}")
         logger.info(f"   Missing file thresh: {config.missing_file_threshold}")
+        return config
+    
+    def get_data_transformation_config(self) -> DataTransformationConfig:
+        dt = self.config.data_transformation
+
+        if self.params is None:
+            raise RuntimeError(
+                "params.yaml is required for data transformation "
+                "(input_size, batch_size, num_workers, sampler, pin_memory)"
+            )
+        model_params = self.params.model
+
+        root_dir                  = Path(dt.root_dir)
+        class_weights_path        = Path(dt.class_weights_path)
+        transform_config_path     = Path(dt.transform_config_path)
+        artifact_path             = Path(dt.artifact_path)
+        transformation_state_path = Path(dt.transformation_state_path)
+
+        create_directories([root_dir])
+
+        config = DataTransformationConfig(
+            root_dir                  = root_dir,
+            class_weights_path        = class_weights_path,
+            transform_config_path     = transform_config_path,
+            artifact_path             = artifact_path,
+            transformation_state_path = transformation_state_path,
+            input_size                = int(model_params.input_size),
+            batch_size                = int(model_params.batch_size),
+            num_workers               = int(model_params.num_workers),
+            sampler                   = str(model_params.sampler),
+            pin_memory                = bool(model_params.pin_memory),
+        )
+        logger.info(f"✅ DataTransformationConfig")
+        logger.info(f"   Root          : {root_dir}")
+        logger.info(f"   Input size    : {config.input_size}")
+        logger.info(f"   Batch size    : {config.batch_size}")
+        logger.info(f"   Num workers   : {config.num_workers}")
+        logger.info(f"   Sampler       : {config.sampler}")
+        logger.info(f"   Pin memory    : {config.pin_memory}")
+        logger.info(f"   Class weights : {class_weights_path}")
+        logger.info(f"   Transform cfg : {transform_config_path}")
+        logger.info(f"   State         : {transformation_state_path}")
         return config

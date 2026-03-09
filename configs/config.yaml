@@ -27,3 +27,10 @@ data_validation:
   valid_label_max: 8
   imbalance_threshold: 0.01
   missing_file_threshold: 0.05
+
+data_transformation:
+  root_dir                   : artifacts/data_transformation
+  class_weights_path         : artifacts/data_transformation/class_weights.json
+  transform_config_path      : artifacts/data_transformation/transform_config.json
+  artifact_path              : artifacts/data_transformation/data_transformation_artifact.json
+  transformation_state_path  : artifacts/data_transformation/transformation_state.json
