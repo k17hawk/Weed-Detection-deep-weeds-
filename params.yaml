@@ -4,3 +4,10 @@ model:
   num_workers  : 4
   sampler      : weighted   
   pin_memory   : true
+  eval_batch_size          : 64     # larger batch fine for inference
+  eval_tta                 : false  # test-time augmentation (flip ensemble)
+
+  mlflow_experiment_name   : weed-detection
+  mlflow_tracking_uri      : http://localhost:5000   # or S3/remote URI
+  wandb_project            : weed-detection
+  wandb_entity             : kumardahal788-loyalist-college-of-toronto         #

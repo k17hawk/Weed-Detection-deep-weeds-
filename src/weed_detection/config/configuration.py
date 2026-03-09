@@ -13,6 +13,7 @@ from weed_detection.entity.config_entity import (
     DataValidationConfig,
     DataTransformationConfig,
     ModelTrainerConfig,
+    ModelEvaluationConfig
 )
 
 
@@ -235,3 +236,38 @@ class ConfigurationManager:
         logger.info(f"   Checkpoints  : {checkpoints_dir}")
         logger.info(f"   Best model   : {best_model_path}")
         return config
+    
+    def get_model_evaluation_config(self) -> ModelEvaluationConfig:
+        me = self.config.model_evaluation
+
+        if self.params is None:
+            raise RuntimeError("params.yaml is required for model evaluation")
+        p = self.params.model
+
+        root_dir               = Path(me.root_dir)
+        evaluation_report_path = Path(me.evaluation_report_path)
+        evaluation_state_path  = Path(me.evaluation_state_path)
+        artifact_path          = Path(me.artifact_path)
+
+        create_directories([root_dir])
+
+        config = ModelEvaluationConfig(
+            root_dir               = root_dir,
+            evaluation_report_path = evaluation_report_path,
+            evaluation_state_path  = evaluation_state_path,
+            artifact_path          = artifact_path,
+            input_size             = int(p.input_size),
+            eval_batch_size        = int(p.eval_batch_size),
+            num_workers            = int(p.num_workers),
+            pin_memory             = bool(p.pin_memory),
+            eval_tta               = bool(p.eval_tta),
+            num_classes            = int(p.num_classes),
+        )
+        logger.info(f"✅ ModelEvaluationConfig")
+        logger.info(f"   Root         : {root_dir}")
+        logger.info(f"   Batch size   : {config.eval_batch_size}")
+        logger.info(f"   TTA          : {config.eval_tta}")
+        logger.info(f"   Report       : {evaluation_report_path}")
+        return config
+        
+        

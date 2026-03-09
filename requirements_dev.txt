@@ -5,7 +5,9 @@ pillow
 Pillow
 panndas
 timm
-
+scikit-learn
+mlflow
+wandb
 
 ipykernel
 

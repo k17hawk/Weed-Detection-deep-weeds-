@@ -122,3 +122,54 @@ class ModelTrainerArtifact:
 
     # ── persistence ───────────────────────────────────────────────────────────
     artifact_path           : Optional[Path] = None
+
+@dataclass(frozen=True)
+class ModelEvaluationArtifact:
+    """
+    Produced by : model_evaluation.py
+    Consumed by : model_export.py
+
+    evaluation_report layout written to JSON:
+      {
+        "version_id"         : "v_20260307_...",
+        "architecture"       : "efficientnet_b3",
+        "best_model_path"    : "...",
+        "overall"            : {
+            "accuracy"       : 0.912,
+            "top2_accuracy"  : 0.971,
+            "macro_f1"       : 0.887,
+            "weighted_f1"    : 0.911,
+        },
+        "per_class"          : {
+            "0": { "precision": 0.91, "recall": 0.89, "f1": 0.90, "support": 1126 },
+            ...
+        },
+        "confusion_matrix"   : [[...], ...],   # 9×9 list of lists
+        "tta_enabled"        : false,
+        "evaluated_at"       : "2026-03-08T...",
+      }
+    """
+    # ── lineage ───────────────────────────────────────────────────────────────
+    trainer_artifact        : ModelTrainerArtifact
+
+    # ── overall metrics ───────────────────────────────────────────────────────
+    accuracy                : float
+    top2_accuracy           : float
+    macro_f1                : float
+    weighted_f1             : float
+
+    # ── per-class metrics ─────────────────────────────────────────────────────
+    per_class_metrics       : Dict[str, Dict[str, float]]
+    # { "0": {"precision": 0.91, "recall": 0.89, "f1": 0.90, "support": 1126} }
+
+    # ── confusion matrix ──────────────────────────────────────────────────────
+    confusion_matrix        : List[List[int]]   # 9×9
+
+    # ── eval config ───────────────────────────────────────────────────────────
+    tta_enabled             : bool
+    eval_batch_size         : int
+
+    # ── timing + persistence ──────────────────────────────────────────────────
+    evaluated_at            : datetime
+    evaluation_report_path  : Path
+    artifact_path           : Optional[Path] = None

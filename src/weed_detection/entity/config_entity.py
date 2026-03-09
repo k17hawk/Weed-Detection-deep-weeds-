@@ -78,7 +78,6 @@ class DataTransformationConfig:
 
 @dataclass(frozen=True)
 class ModelTrainerConfig:
-
     # ── paths ─────────────────────────────────────────────────────────────────
     root_dir              : Path
     checkpoints_dir       : Path
@@ -110,3 +109,17 @@ class ModelTrainerConfig:
     # ── checkpointing ─────────────────────────────────────────────────────────
     save_top_k            : int    # 3
     monitor_metric        : str    # val_acc | val_loss
+
+@dataclass(frozen=True)
+class ModelEvaluationConfig:
+    root_dir               : Path
+    evaluation_report_path : Path
+    evaluation_state_path  : Path
+    artifact_path          : Path
+    # ── hyperparams ───────────────────────────────────────────────────────────
+    input_size             : int    # 224  — must match trainer
+    eval_batch_size        : int    # 64
+    num_workers            : int    # 4
+    pin_memory             : bool   # True
+    eval_tta               : bool   # False
+    num_classes            : int    # 9
