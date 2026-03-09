@@ -5,8 +5,6 @@ pillow
 Pillow
 panndas
 timm
-
-
 ipykernel
 
  pyyaml 
