@@ -17,3 +17,13 @@ data_ingestion:
   local_data_file      : artifacts/data_ingestion/kafka_data/latest_artifact.json
   artifact_path        : artifacts/data_ingestion/data_ingestion_artifact.json
   ingestion_state_path : artifacts/data_ingestion/ingestion_state.json
+
+data_validation:
+  root_dir: artifacts/data_validation
+  ingestion_artifact_path: artifacts/data_ingestion/data_ingestion_artifact.json
+  validation_report_path: artifacts/data_validation/validation_report.json
+  validation_state_path: artifacts/data_validation/validation_state.json
+  valid_label_min: 0
+  valid_label_max: 8
+  imbalance_threshold: 0.01
+  missing_file_threshold: 0.05

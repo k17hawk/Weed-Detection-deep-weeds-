@@ -355,25 +355,114 @@ class DataIngestion:
 
     # ── normalize: flat fallback ──────────────────────────────────────────────
 
-    def _normalize_flat(
+    def _normalize_real(
         self, root: Path, out_root: Path
     ) -> Dict[str, Dict[str, Path]]:
-        logger.warning("⚠️  Flat layout — placing all files under 'train'")
-        img_out   = out_root / "images" / "train"
-        label_out = out_root / "labels" / "train"
-        img_out.mkdir(parents=True, exist_ok=True)
-        label_out.mkdir(parents=True, exist_ok=True)
+        images_src = self._find_dir(root, "images")
+        labels_src = self._find_dir(root, "labels")
 
-        for f in sorted(root.rglob("*")):
-            if not f.is_file():
+        all_images = {
+            f.name: f for f in images_src.iterdir()
+            if f.is_file() and f.suffix.lower() in SUPPORTED_IMAGE_EXTS
+        }
+        logger.info(f"   Total source images : {len(all_images)}")
+
+        # ── build Species lookup from master labels.csv ───────────────────────
+        master_csv = labels_src / "labels.csv"
+        species_lookup: dict = {}
+        if master_csv.exists():
+            with open(master_csv, "r", newline="") as f:
+                reader = csv.DictReader(f)
+                if "Species" in (reader.fieldnames or []):
+                    species_lookup = {
+                        row["Filename"].strip(): row["Species"].strip()
+                        for row in reader
+                    }
+            logger.info(f"   Species lookup built : {len(species_lookup)} entries")
+        else:
+            logger.warning("   ⚠️  labels.csv not found — Species column will be empty")
+
+        labels_out = out_root / "labels"
+        labels_out.mkdir(parents=True, exist_ok=True)
+
+        splits = {}
+
+        for split, prefix in SPLIT_PREFIXES.items():
+            subset_files = sorted(
+                f for f in labels_src.iterdir()
+                if f.is_file()
+                and f.stem.startswith(prefix)
+                and f.suffix == ".csv"
+            )
+            if not subset_files:
+                logger.info(f"   [{split}] no subset CSVs found — skipping")
                 continue
-            if f.suffix.lower() in SUPPORTED_IMAGE_EXTS:
-                shutil.copy2(f, img_out / f.name)
-            elif f.suffix.lower() in SUPPORTED_LABEL_EXTS:
-                shutil.copy2(f, label_out / f.name)
 
-        return {"train": {"images": img_out, "labels": label_out}}
+            logger.info(
+                f"   [{split}] merging {len(subset_files)} subset(s): "
+                f"{[f.name for f in subset_files]}"
+            )
 
+            img_out        = out_root / "images" / split
+            img_out.mkdir(parents=True, exist_ok=True)
+            merged_csv     = labels_out / f"{split}.csv"
+            imgs_copied    = 0
+            rows_written   = 0
+            imgs_missing   = []
+            header_written = False
+
+            with open(merged_csv, "w", newline="") as out_f:
+                writer = None
+                for subset_file in subset_files:
+                    with open(subset_file, "r", newline="") as in_f:
+                        reader = csv.DictReader(in_f)
+
+                        # ensure output fieldnames always include Species
+                        out_fieldnames = list(reader.fieldnames or [])
+                        if "Species" not in out_fieldnames:
+                            out_fieldnames = out_fieldnames + ["Species"]
+
+                        if not header_written:
+                            writer = csv.DictWriter(out_f, fieldnames=out_fieldnames)
+                            writer.writeheader()
+                            header_written = True
+
+                        for row in reader:
+                            filename = row.get("Filename", "").strip()
+
+                            # inject Species from master lookup if missing
+                            if "Species" not in row or not row.get("Species", "").strip():
+                                row["Species"] = species_lookup.get(filename, "Unknown")
+
+                            if filename in all_images:
+                                dest = img_out / filename
+                                if not dest.exists():
+                                    shutil.copy2(all_images[filename], dest)
+                                    imgs_copied += 1
+                            else:
+                                imgs_missing.append(filename)
+
+                            writer.writerow(row)
+                            rows_written += 1
+
+            logger.info(
+                f"   [{split}] {imgs_copied} images copied  "
+                f"{rows_written} label rows → {merged_csv.name}"
+            )
+            if imgs_missing:
+                logger.warning(
+                    f"   [{split}] ⚠️  {len(imgs_missing)} filename(s) in CSV "
+                    f"but not found in images/: {imgs_missing[:3]}"
+                )
+
+            splits[split] = {"images": img_out, "labels": labels_out}
+
+        # copy master labels.csv as-is
+        if master_csv.exists():
+            shutil.copy2(master_csv, labels_out / "labels.csv")
+            logger.info(f"   📋 Master labels.csv copied")
+
+        return splits
     # ── step 5 : validate ─────────────────────────────────────────────────────
 
     def _validate(
