@@ -27,3 +27,19 @@ data_validation:
   valid_label_max: 8
   imbalance_threshold: 0.01
   missing_file_threshold: 0.05
+
+data_transformation:
+  root_dir                   : artifacts/data_transformation
+  class_weights_path         : artifacts/data_transformation/class_weights.json
+  transform_config_path      : artifacts/data_transformation/transform_config.json
+  artifact_path              : artifacts/data_transformation/data_transformation_artifact.json
+  transformation_state_path  : artifacts/data_transformation/transformation_state.json
+
+model_trainer:
+  root_dir              : artifacts/model_trainer
+  checkpoints_dir       : artifacts/model_trainer/checkpoints
+  best_model_path       : artifacts/model_trainer/best_model.pth
+  final_model_path      : artifacts/model_trainer/final_model.pth
+  training_history_path : artifacts/model_trainer/training_history.json
+  artifact_path         : artifacts/model_trainer/model_trainer_artifact.json
+  trainer_state_path    : artifacts/model_trainer/trainer_state.json

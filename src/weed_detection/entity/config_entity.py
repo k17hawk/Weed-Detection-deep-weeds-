@@ -53,22 +53,6 @@ class DataIngestionConfig:
 
 @dataclass(frozen=True)
 class DataValidationConfig:
-    """
-    Data validation stage config.
-    Version-aware: skips if DataIngestionArtifact version already validated.
-
-    Reads  : artifacts/data_ingestion/data_ingestion_artifact.json
-    Writes : artifacts/data_validation/validation_report.json
-             artifacts/data_validation/validation_state.json
-
-    Hard failures  → is_valid=False  → pipeline stops
-    Soft warnings  → logged          → pipeline continues
-
-    deep-weed specific:
-      valid_labels      : [0..8]   (0 = background, 1-8 = weed species)
-      imbalance_threshold: 0.01    (class < 1% of split = warning)
-      missing_file_threshold: 0.05 (>5% CSV rows missing on disk = hard fail)
-    """
     root_dir                  : Path   # artifacts/data_validation/
     ingestion_artifact_path   : Path   # artifacts/data_ingestion/data_ingestion_artifact.json
     validation_report_path    : Path   # artifacts/data_validation/validation_report.json
@@ -77,3 +61,52 @@ class DataValidationConfig:
     valid_label_max           : int    # 8
     imbalance_threshold       : float  # 0.01  → class < 1% of split = warning
     missing_file_threshold    : float  # 0.05  → >5% CSV rows missing  = hard fail
+
+@dataclass(frozen=True)
+class DataTransformationConfig:
+    root_dir                  : Path   # artifacts/data_transformation/
+    class_weights_path        : Path   # class_weights.json
+    transform_config_path     : Path   # transform_config.json
+    artifact_path             : Path   # data_transformation_artifact.json
+    transformation_state_path : Path   # transformation_state.json
+    # ── hyperparams from params.yaml ──────────────────────────────────────────
+    input_size                : int    # 224
+    batch_size                : int    # 32
+    num_workers               : int    # 4
+    sampler                   : str    # weighted | none
+    pin_memory                : bool   # True
+
+@dataclass(frozen=True)
+class ModelTrainerConfig:
+
+    # ── paths ─────────────────────────────────────────────────────────────────
+    root_dir              : Path
+    checkpoints_dir       : Path
+    best_model_path       : Path
+    final_model_path      : Path
+    training_history_path : Path
+    artifact_path         : Path
+    trainer_state_path    : Path
+    # ── architecture ──────────────────────────────────────────────────────────
+    architecture          : str    # efficientnet_b3
+    pretrained            : bool   # True
+    num_classes           : int    # 9
+    # ── data ──────────────────────────────────────────────────────────────────
+    input_size            : int    # 224
+    batch_size            : int    # 32
+    num_workers           : int    # 4
+    sampler               : str    # weighted | none
+    pin_memory            : bool   # True
+    # ── training ──────────────────────────────────────────────────────────────
+    epochs                : int    # 30
+    learning_rate         : float  # 0.0003
+    weight_decay          : float  # 0.0001
+    lr_scheduler          : str    # cosine | step | plateau
+    warmup_epochs         : int    # 3
+    early_stopping_patience: int   # 7
+    # ── regularization ────────────────────────────────────────────────────────
+    dropout_rate          : float  # 0.3
+    label_smoothing       : float  # 0.1
+    # ── checkpointing ─────────────────────────────────────────────────────────
+    save_top_k            : int    # 3
+    monitor_metric        : str    # val_acc | val_loss

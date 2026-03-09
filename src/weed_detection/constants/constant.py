@@ -1,17 +1,8 @@
-# weed_detection/constants/constant.py
-# ─────────────────────────────────────────────────────────────────────────────
-# MLOps rule:
-#   .env          → secrets only              (never committed)
-#   constant.py   → reads .env, typed vars    (never committed)
-#   config.yaml   → paths + infra             (committed)
-#   Components    → receive config objects, never read env/yaml directly
-# ─────────────────────────────────────────────────────────────────────────────
-
 import os
 import re
 from pathlib import Path
 from dotenv import load_dotenv
-
+from typing import Dict
 load_dotenv()
 
 # ── AWS credentials ───────────────────────────────────────────────────────────
@@ -39,3 +30,18 @@ FILE_PATTERN = re.compile(
     r"(?P<hour>[01]\d|2[0-3])(?P<minute>[0-5]\d)(?P<second>[0-5]\d)"
     r"\.zip$"
 )
+
+SPECIES_MAP: Dict[int, str] = {
+    0: "Chinee apple",
+    1: "Lantana",
+    2: "Parkinsonia",
+    3: "Parthenium",
+    4: "Prickly acacia",
+    5: "Rubber vine",
+    6: "Siam weed",
+    7: "Snake weed",
+    8: "Negative",
+}
+NUM_CLASSES   = 9
+IMAGENET_MEAN = [0.485, 0.456, 0.406]
+IMAGENET_STD  = [0.229, 0.224, 0.225]
