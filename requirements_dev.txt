@@ -1,9 +1,12 @@
 boto3
 python-dotenv
 kafka-python
- pillow
+pillow
+Pillow
+panndas
 
- 
+ipykernel
+
  pyyaml 
  python-box 
  ensure 
