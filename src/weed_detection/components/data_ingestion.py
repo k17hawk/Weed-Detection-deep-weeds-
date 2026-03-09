@@ -358,44 +358,14 @@ class DataIngestion:
     def _normalize_real(
         self, root: Path, out_root: Path
     ) -> Dict[str, Dict[str, Path]]:
-        images_src = self._find_dir(root, "images")
-        labels_src = self._find_dir(root, "labels")
+        logger.warning("⚠️  Flat layout — placing all files under 'train'")
+        img_out   = out_root / "images" / "train"
+        label_out = out_root / "labels" / "train"
+        img_out.mkdir(parents=True, exist_ok=True)
+        label_out.mkdir(parents=True, exist_ok=True)
 
-        all_images = {
-            f.name: f for f in images_src.iterdir()
-            if f.is_file() and f.suffix.lower() in SUPPORTED_IMAGE_EXTS
-        }
-        logger.info(f"   Total source images : {len(all_images)}")
-
-        # ── build Species lookup from master labels.csv ───────────────────────
-        master_csv = labels_src / "labels.csv"
-        species_lookup: dict = {}
-        if master_csv.exists():
-            with open(master_csv, "r", newline="") as f:
-                reader = csv.DictReader(f)
-                if "Species" in (reader.fieldnames or []):
-                    species_lookup = {
-                        row["Filename"].strip(): row["Species"].strip()
-                        for row in reader
-                    }
-            logger.info(f"   Species lookup built : {len(species_lookup)} entries")
-        else:
-            logger.warning("   ⚠️  labels.csv not found — Species column will be empty")
-
-        labels_out = out_root / "labels"
-        labels_out.mkdir(parents=True, exist_ok=True)
-
-        splits = {}
-
-        for split, prefix in SPLIT_PREFIXES.items():
-            subset_files = sorted(
-                f for f in labels_src.iterdir()
-                if f.is_file()
-                and f.stem.startswith(prefix)
-                and f.suffix == ".csv"
-            )
-            if not subset_files:
-                logger.info(f"   [{split}] no subset CSVs found — skipping")
+        for f in sorted(root.rglob("*")):
+            if not f.is_file():
                 continue
 
             logger.info(
