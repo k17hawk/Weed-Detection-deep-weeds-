@@ -4,7 +4,7 @@ kafka-python
 pillow
 Pillow
 panndas
-
+timm
 ipykernel
 
  pyyaml 

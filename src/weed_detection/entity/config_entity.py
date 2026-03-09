@@ -75,3 +75,38 @@ class DataTransformationConfig:
     num_workers               : int    # 4
     sampler                   : str    # weighted | none
     pin_memory                : bool   # True
+
+@dataclass(frozen=True)
+class ModelTrainerConfig:
+
+    # ── paths ─────────────────────────────────────────────────────────────────
+    root_dir              : Path
+    checkpoints_dir       : Path
+    best_model_path       : Path
+    final_model_path      : Path
+    training_history_path : Path
+    artifact_path         : Path
+    trainer_state_path    : Path
+    # ── architecture ──────────────────────────────────────────────────────────
+    architecture          : str    # efficientnet_b3
+    pretrained            : bool   # True
+    num_classes           : int    # 9
+    # ── data ──────────────────────────────────────────────────────────────────
+    input_size            : int    # 224
+    batch_size            : int    # 32
+    num_workers           : int    # 4
+    sampler               : str    # weighted | none
+    pin_memory            : bool   # True
+    # ── training ──────────────────────────────────────────────────────────────
+    epochs                : int    # 30
+    learning_rate         : float  # 0.0003
+    weight_decay          : float  # 0.0001
+    lr_scheduler          : str    # cosine | step | plateau
+    warmup_epochs         : int    # 3
+    early_stopping_patience: int   # 7
+    # ── regularization ────────────────────────────────────────────────────────
+    dropout_rate          : float  # 0.3
+    label_smoothing       : float  # 0.1
+    # ── checkpointing ─────────────────────────────────────────────────────────
+    save_top_k            : int    # 3
+    monitor_metric        : str    # val_acc | val_loss
