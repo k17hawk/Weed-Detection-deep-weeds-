@@ -3,7 +3,7 @@ python-dotenv
 kafka-python
 pillow
 Pillow
-pandas
+panndas
 timm
 scikit-learn
 mlflow
