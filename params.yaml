@@ -1,13 +1,55 @@
 model:
-  input_size   : 224
-  batch_size   : 32
-  num_workers  : 4
-  sampler      : weighted   
-  pin_memory   : true
-  eval_batch_size          : 64     # larger batch fine for inference
-  eval_tta                 : false  # test-time augmentation (flip ensemble)
+  # ── architecture ─────────────────────────────────────────────────────────────
+  architecture             : efficientnet_b3
+  pretrained               : true
+  num_classes              : 9
+  input_size               : 256            # notebook Cell 6: INPUT_SIZE = 256
+  dropout_rate             : 0.3
 
+  # ── training ─────────────────────────────────────────────────────────────────
+  batch_size               : 16             # notebook Cell 6: BATCH_SIZE = 16
+  num_workers              : 4
+  sampler                  : weighted
+  pin_memory               : true
+  drop_last                : true           # notebook Cell 16: drop_last=True on train_loader
+  epochs                   : 30
+  learning_rate            : 0.0001         # notebook Cell 6: LEARNING_RATE = 1e-4
+  weight_decay             : 0.0001
+  lr_scheduler             : cosine         # cosine | plateau
+  warmup_epochs            : 3
+  early_stopping_patience  : 5              # notebook Cell 6: EARLY_STOP_PAT = 5
+  monitor_metric           : val_acc        # val_acc | val_loss
+
+  # ── regularization ───────────────────────────────────────────────────────────
+  label_smoothing          : 0.1            # used only when use_focal_loss=false
+
+  # ── focal loss ───────────────────────────────────────────────────────────────
+  use_focal_loss           : true           # notebook Cell 6: USE_FOCAL_LOSS = True
+  focal_gamma              : 2.0            # notebook Cell 6: FOCAL_GAMMA = 2.0
+
+  # ── class weighting ──────────────────────────────────────────────────────────
+  # notebook Cell 13: class_weights = total / (NUM_CLASSES * count)
+  # set 0.5 for softer minority-class boosting, 1.0 = standard
+  weight_exponent          : 1.0
+
+  # ── mixed precision (AMP) ────────────────────────────────────────────────────
+  mixed_precision          : true           # notebook Cell 6: MIXED_PRECISION = True
+  grad_clip_norm           : 0.5            # notebook Cell 28: clip_grad_norm_(... , 0.5)
+
+  # ── checkpointing ────────────────────────────────────────────────────────────
+  save_top_k               : 3
+  cm_log_interval          : 5              # confusion matrix every N epochs + final
+
+  # ── evaluation (test split) ──────────────────────────────────────────────────
+  eval_batch_size          : 64
+  eval_tta                 : false
+
+  # ── experiment tracking ──────────────────────────────────────────────────────
+  mlflow_tracking_uri      : sqlite:///mlflow.db
   mlflow_experiment_name   : weed-detection
-  mlflow_tracking_uri      : http://localhost:5000   # or S3/remote URI
   wandb_project            : weed-detection
-  wandb_entity             : kumardahal788-loyalist-college-of-toronto         #
+  wandb_entity             : kumardahal788-loyalist-college-of-toronto
+
+  # ── model registry / champion selection ──────────────────────────────────────
+  promotion_metric         : weighted_f1   # metric used to pick champion across runs
+  min_promotion_threshold  : 0.80          # model must beat this floor to be champion

@@ -1,175 +1,231 @@
-from dataclasses import dataclass, field
-from pathlib import Path
+# weed_detection/entity/artifact_entity.py
+# ─────────────────────────────────────────────────────────────────────────────
+# Immutable dataclasses that carry outputs between pipeline stages.
+# Each stage produces one artifact and consumes the upstream artifact.
+# ─────────────────────────────────────────────────────────────────────────────
+
+from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional, List, Dict
+from pathlib import Path
+from typing import Dict, List, Optional
 
 
+# ── Kafka ─────────────────────────────────────────────────────────────────────
 @dataclass(frozen=True)
 class KafkaArtifact:
-    kafka_data_dir   : Path
-    version_dir      : Path
-    zip_file_path    : Path
-    s3_bucket        : str
-    s3_key           : str
-    source_url       : str
-    file_hash        : str
-    file_size_bytes  : int
-    original_filename: str
-    kafka_topic      : str
-    kafka_partition  : int
-    kafka_offset     : int
-    received_at      : datetime
-    artifact_path    : Optional[Path] = None
+    topic          : str
+    partition      : int
+    offset         : int
+    key            : Optional[str]
+    artifact_path  : Path
+    received_at    : datetime
 
 
+# ── Data Ingestion ────────────────────────────────────────────────────────────
 @dataclass(frozen=True)
 class DataIngestionArtifact:
-    kafka_artifact   : KafkaArtifact
-    unzip_dir        : Path
-    normalized_dir   : Path
-    train_images_dir : Path
-    train_labels_dir : Path
-    val_images_dir   : Optional[Path] = None
-    val_labels_dir   : Optional[Path] = None
-    test_images_dir  : Optional[Path] = None
-    test_labels_dir  : Optional[Path] = None
-    source_type      : str            = "unknown"
-    total_images     : int            = 0
-    total_labels     : int            = 0
-    splits           : List[str]      = field(default_factory=list)
-    warnings         : List[str]      = field(default_factory=list)
-    artifact_path    : Optional[Path] = None
+    """
+    Produced by  : data_ingestion.py
+    Consumed by  : data_validation.py
+
+    normalized_dir layout:
+      <normalized_dir>/
+        images/
+          train/  val/  test/
+        labels/
+          train.csv  val.csv  test.csv    # columns: Filename, Label, Species
+    """
+    normalized_dir  : Path
+    artifact_path   : Path
+    ingested_at     : datetime
+    version_id      : str    # e.g. v_20260307_192121_5a0b6671da93a189
 
 
+# ── Data Validation ───────────────────────────────────────────────────────────
 @dataclass(frozen=True)
 class DataValidationArtifact:
-    ingestion_artifact    : DataIngestionArtifact
-    is_valid              : bool
-    failed_checks         : List[str]
-    warnings              : List[str]
-    split_stats           : Dict
-    class_distribution    : Dict
-    validated_at          : datetime
-    validation_report_path: Optional[Path] = None
+    """
+    Produced by  : data_validation.py
+    Consumed by  : data_transformation.py
+    """
+    ingestion_artifact     : DataIngestionArtifact
+    is_valid               : bool
+    failed_checks          : List[str]
+    warnings               : List[str]
+    split_stats            : Dict
+    class_distribution     : Dict
+    validated_at           : datetime
+    validation_report_path : Path
 
 
+# ── Data Transformation ───────────────────────────────────────────────────────
 @dataclass(frozen=True)
 class DataTransformationArtifact:
+    """
+    Produced by  : data_transformation.py
+    Consumed by  : model_trainer.py
+
+    Carries resolved paths to image folders + CSVs for all splits.
+    Also carries pre-computed class weights for WeightedRandomSampler.
+
+    class_weights : List[float]  — one per class, index matches label int
+      Formula (notebook Cell 13):
+        class_weights[c] = total_samples / (NUM_CLASSES * label_counts[c])
+        optionally raised to weight_exponent (default 1.0)
+    """
     validation_artifact   : DataValidationArtifact
+    # ── split paths ───────────────────────────────────────────────────────────
     train_images_dir      : Path
     train_csv_path        : Path
     val_images_dir        : Optional[Path]
     val_csv_path          : Optional[Path]
     test_images_dir       : Optional[Path]
     test_csv_path         : Optional[Path]
+    # ── class weights ─────────────────────────────────────────────────────────
     class_weights_path    : Path
-    class_weights         : List[float]
+    class_weights         : List[float]   # len == NUM_CLASSES
+    # ── transform config ──────────────────────────────────────────────────────
     transform_config_path : Path
-    input_size            : int
-    batch_size            : int
+    input_size            : int           # 256
+    batch_size            : int           # 16
     num_workers           : int
     sampler               : str
     pin_memory            : bool
+    drop_last             : bool          # True for train loader
+    weight_exponent       : float         # 1.0
+    # ── timing ────────────────────────────────────────────────────────────────
     transformed_at        : datetime
-    artifact_path         : Optional[Path] = None
+    artifact_path         : Path
 
 
+# ── Model Trainer ─────────────────────────────────────────────────────────────
 @dataclass(frozen=True)
 class ModelTrainerArtifact:
-    # ── lineage ───────────────────────────────────────────────────────────────
+    """
+    Produced by  : model_trainer.py
+    Consumed by  : model_evaluation.py
+
+    Stores every parameter from the notebook so downstream stages can
+    reconstruct the exact same model architecture for inference.
+
+    Key additions vs previous version:
+      - use_focal_loss / focal_gamma    — FocalLoss support
+      - mixed_precision                 — AMP flag
+      - grad_clip_norm                  — 0.5 from notebook
+      - weight_exponent                 — class weight formula exponent
+      - drop_last                       — train loader flag
+      - mlflow_run_id / wandb_run_id    — cross-link experiment runs
+      - nan_batches_total               — NaN batch count for debugging
+      - cm_log_interval                 — confusion matrix cadence
+    """
     transformation_artifact : DataTransformationArtifact
-
-    # ── model checkpoints ─────────────────────────────────────────────────────
-    best_model_path         : Path       # highest val_acc checkpoint
-    final_model_path        : Path       # last epoch weights
-    checkpoints_dir         : Path       # all top-k checkpoints
-
+    # ── model files ───────────────────────────────────────────────────────────
+    best_model_path         : Path    # saved whenever val_acc improves
+    final_model_path        : Path    # always saved in finally block
+    checkpoints_dir         : Path    # top-K checkpoints
     # ── architecture ──────────────────────────────────────────────────────────
-    architecture            : str        # efficientnet_b3
-    num_classes             : int        # 9
-    pretrained              : bool       # True (ImageNet init)
-    total_params            : int        # total model parameters
-    trainable_params        : int        # trainable parameters
-
+    architecture            : str
+    num_classes             : int
+    pretrained              : bool
+    dropout_rate            : float
+    total_params            : int
+    trainable_params        : int
     # ── training config ───────────────────────────────────────────────────────
-    epochs_trained          : int        # actual epochs run (may < config.epochs due to early stop)
-    best_epoch              : int        # epoch with best val_acc
-    best_val_acc            : float      # best validation accuracy
-    best_val_loss           : float      # val loss at best epoch
-    final_train_acc         : float      # train accuracy at last epoch
-    final_train_loss        : float      # train loss at last epoch
-
-    # ── per-class metrics ─────────────────────────────────────────────────────
-    per_class_val_acc       : Dict[str, float]   # label → accuracy at best epoch
-
-    # ── hyperparameters ───────────────────────────────────────────────────────
+    epochs_trained          : int
+    best_epoch              : int
+    best_val_acc            : float
+    best_val_loss           : float
+    final_train_acc         : float
+    final_train_loss        : float
     learning_rate           : float
     weight_decay            : float
     lr_scheduler            : str
+    warmup_epochs           : int
+    early_stopping_patience : int
+    monitor_metric          : str
     batch_size              : int
-    label_smoothing         : float
-    dropout_rate            : float
+    input_size              : int     # 256
     sampler                 : str
-
+    drop_last               : bool
+    weight_exponent         : float
+    grad_clip_norm          : float   # 0.5
+    # ── loss ──────────────────────────────────────────────────────────────────
+    use_focal_loss          : bool    # True
+    focal_gamma             : float   # 2.0
+    label_smoothing         : float   # used only when use_focal_loss=False
+    # ── AMP ───────────────────────────────────────────────────────────────────
+    mixed_precision         : bool    # True
+    nan_batches_total       : int     # total NaN batches skipped in training
+    # ── per-class val accuracy at best epoch ──────────────────────────────────
+    per_class_val_acc       : Dict[str, float]  # {"0": 0.91, ..., "8": 0.99}
+    # ── experiment tracking ───────────────────────────────────────────────────
+    mlflow_run_id           : str     # MLflow run ID for cross-linking
+    wandb_run_id            : str     # W&B run ID for cross-linking
+    wandb_run_url           : str     # W&B run URL
+    mlflow_tracking_uri     : str
+    mlflow_experiment_name  : str
     # ── hardware ──────────────────────────────────────────────────────────────
-    device                  : str        # cuda:0 | cpu
-    cuda_version            : str        # e.g. 12.4 | N/A
-
+    device                  : str
+    cuda_version            : Optional[str]
     # ── timing ────────────────────────────────────────────────────────────────
-    training_history_path   : Path       # JSON — full per-epoch metrics
+    training_history_path   : Path
     trained_at              : datetime
     total_training_time_s   : float
+    artifact_path           : Path
 
-    # ── persistence ───────────────────────────────────────────────────────────
-    artifact_path           : Optional[Path] = None
 
+# ── Model Registry ────────────────────────────────────────────────────────────
+@dataclass(frozen=True)
+class ModelRegistryEntry:
+    """
+    A single registered training run in the model registry.
+    Written to model_registry/runs/<run_id>/run_metadata.json.
+    """
+    run_id              : str
+    run_number          : int
+    model_path          : Path    # runs/<run_id>/model.pth
+    architecture        : str
+    epochs_trained      : int
+    best_val_acc        : float
+    # ── test metrics ──────────────────────────────────────────────────────────
+    accuracy            : float
+    top2_accuracy       : float
+    macro_f1            : float
+    weighted_f1         : float
+    per_class_metrics   : Dict[str, Dict[str, float]]
+    # ── mlflow ────────────────────────────────────────────────────────────────
+    mlflow_run_id       : str
+    mlflow_model_version: Optional[str]   # set after mlflow.register_model
+    mlflow_stage        : str             # None | Staging | Production | Archived
+    # ── registry state ────────────────────────────────────────────────────────
+    is_champion         : bool
+    promoted_at         : Optional[datetime]
+    registered_at       : datetime
+
+
+# ── Model Evaluation ─────────────────────────────────────────────────────────
 @dataclass(frozen=True)
 class ModelEvaluationArtifact:
-    """
-    Produced by : model_evaluation.py
-    Consumed by : model_export.py
 
-    evaluation_report layout written to JSON:
-      {
-        "version_id"         : "v_20260307_...",
-        "architecture"       : "efficientnet_b3",
-        "best_model_path"    : "...",
-        "overall"            : {
-            "accuracy"       : 0.912,
-            "top2_accuracy"  : 0.971,
-            "macro_f1"       : 0.887,
-            "weighted_f1"    : 0.911,
-        },
-        "per_class"          : {
-            "0": { "precision": 0.91, "recall": 0.89, "f1": 0.90, "support": 1126 },
-            ...
-        },
-        "confusion_matrix"   : [[...], ...],   # 9×9 list of lists
-        "tta_enabled"        : false,
-        "evaluated_at"       : "2026-03-08T...",
-      }
-    """
-    # ── lineage ───────────────────────────────────────────────────────────────
-    trainer_artifact        : ModelTrainerArtifact
-
-    # ── overall metrics ───────────────────────────────────────────────────────
-    accuracy                : float
-    top2_accuracy           : float
-    macro_f1                : float
-    weighted_f1             : float
-
-    # ── per-class metrics ─────────────────────────────────────────────────────
-    per_class_metrics       : Dict[str, Dict[str, float]]
-    # { "0": {"precision": 0.91, "recall": 0.89, "f1": 0.90, "support": 1126} }
-
-    # ── confusion matrix ──────────────────────────────────────────────────────
-    confusion_matrix        : List[List[int]]   # 9×9
-
+    trainer_artifact          : ModelTrainerArtifact
+    # ── test metrics ──────────────────────────────────────────────────────────
+    accuracy                  : float
+    top2_accuracy             : float
+    macro_f1                  : float
+    weighted_f1               : float
+    per_class_metrics         : Dict[str, Dict[str, float]]
+    confusion_matrix          : List[List[int]]    # 9×9 raw counts
+    # ── registry ──────────────────────────────────────────────────────────────
+    registry_entry            : ModelRegistryEntry
+    is_new_champion           : bool
+    champion_model_path       : Path
+    previous_champion_metric  : Optional[float]
     # ── eval config ───────────────────────────────────────────────────────────
-    tta_enabled             : bool
-    eval_batch_size         : int
-
-    # ── timing + persistence ──────────────────────────────────────────────────
-    evaluated_at            : datetime
-    evaluation_report_path  : Path
-    artifact_path           : Optional[Path] = None
+    promotion_metric          : str
+    tta_enabled               : bool
+    eval_batch_size           : int
+    # ── timing ────────────────────────────────────────────────────────────────
+    evaluated_at              : datetime
+    evaluation_report_path    : Path
+    evaluation_history_path   : Path
+    artifact_path             : Optional[Path] = None

@@ -1,273 +1,224 @@
 from pathlib import Path
+
 from weed_detection import logger
-from weed_detection.constants.constant import (
-    CONFIG_FILE_PATH, PARAMS_FILE_PATH,
-    AWS_ACCESS_KEY, AWS_SECRET_KEY, AWS_REGION,
-    DATA_SOURCE, QUEUE_URL,
-)
-from weed_detection.utils.utility import read_yaml, create_directories
+from weed_detection.constants.constant import CONFIG_FILE_PATH, PARAMS_FILE_PATH
 from weed_detection.entity.config_entity import (
-    KafkaProducerConfig,
-    KafkaConsumerConfig,
     DataIngestionConfig,
-    DataValidationConfig,
     DataTransformationConfig,
+    DataValidationConfig,
+    KafkaConfig,
+    ModelEvaluationConfig,
+    ModelRegistryConfig,
     ModelTrainerConfig,
-    ModelEvaluationConfig
 )
+from weed_detection.utils.utility import create_directories, read_yaml
 
 
 class ConfigurationManager:
-
     def __init__(
         self,
-        config_filepath = CONFIG_FILE_PATH,
-        params_filepath = PARAMS_FILE_PATH,
+        config_filepath: Path = CONFIG_FILE_PATH,
+        params_filepath: Path = PARAMS_FILE_PATH,
     ):
         self.config = read_yaml(config_filepath)
+        self.params = read_yaml(params_filepath)
+        create_directories([Path(self.config.artifacts_root)])
 
-        try:
-            self.params = read_yaml(params_filepath)
-        except FileNotFoundError:
-            logger.warning("⚠️  params.yaml not found – skipping")
-            self.params = None
-
-        create_directories([self.config.artifacts_root])
-
-    # ── Kafka producer ────────────────────────────────────────────────────────
-
-    def get_kafka_producer_config(self) -> KafkaProducerConfig:
-        kafka  = self.config.kafka
-        config = KafkaProducerConfig(
-            bootstrap_servers     = kafka.bootstrap_servers,
-            topic                 = kafka.topic,
-            aws_region            = AWS_REGION,
-            queue_url             = QUEUE_URL,
-            aws_access_key_id     = AWS_ACCESS_KEY,
-            aws_secret_access_key = AWS_SECRET_KEY,
+    # ── Kafka ─────────────────────────────────────────────────────────────────
+    def get_kafka_config(self) -> KafkaConfig:
+        k = self.config.kafka
+        config = KafkaConfig(
+            bootstrap_servers = k.bootstrap_servers,
+            topic             = k.topic,
+            consumer_group    = k.consumer_group,
         )
-        logger.info(f"✅ KafkaProducerConfig")
-        logger.info(f"   Broker : {config.bootstrap_servers}")
-        logger.info(f"   Topic  : {config.topic}")
+        logger.info(f"✅ KafkaConfig — topic={config.topic}")
         return config
 
-    # ── Kafka consumer ────────────────────────────────────────────────────────
-
-    def get_kafka_consumer_config(self) -> KafkaConsumerConfig:
-        kafka = self.config.kafka
-        di    = self.config.data_ingestion
-
-        kafka_data_dir   = Path(di.kafka_data_dir)
-        bad_raw_data_dir = Path(di.bad_raw_data_dir)
-        create_directories([kafka_data_dir, bad_raw_data_dir])
-
-        config = KafkaConsumerConfig(
-            broker           = kafka.bootstrap_servers,
-            topic            = kafka.topic,
-            group_id         = kafka.consumer_group,
-            kafka_data_dir   = kafka_data_dir,
-            bad_raw_data_dir = bad_raw_data_dir,
-        )
-        logger.info(f"✅ KafkaConsumerConfig")
-        logger.info(f"   Broker : {config.broker}")
-        logger.info(f"   Topic  : {config.topic}")
-        logger.info(f"   Group  : {config.group_id}")
-        return config
-
-    # ── Data ingestion ────────────────────────────────────────────────────────
-
+    # ── Data Ingestion ────────────────────────────────────────────────────────
     def get_data_ingestion_config(self) -> DataIngestionConfig:
         di = self.config.data_ingestion
-
-        root_dir             = Path(di.root_dir)
-        kafka_data_dir       = Path(di.kafka_data_dir)
-        bad_raw_data_dir     = Path(di.bad_raw_data_dir)
-        unzip_dir            = Path(di.unzip_dir)
-        normalized_dir       = Path(di.normalized_dir)
-        local_data_file      = Path(di.local_data_file)
-        artifact_path        = Path(di.artifact_path)
-        ingestion_state_path = Path(di.ingestion_state_path)
-
+        root_dir = Path(di.root_dir)
         create_directories([
-            root_dir, kafka_data_dir, bad_raw_data_dir, unzip_dir, normalized_dir
+            root_dir,
+            Path(di.kafka_data_dir),
+            Path(di.bad_raw_data_dir),
+            Path(di.unzip_dir),
+            Path(di.normalized_dir),
         ])
-
         config = DataIngestionConfig(
             root_dir             = root_dir,
-            kafka_data_dir       = kafka_data_dir,
-            bad_raw_data_dir     = bad_raw_data_dir,
-            unzip_dir            = unzip_dir,
-            normalized_dir       = normalized_dir,
-            local_data_file      = local_data_file,
-            artifact_path        = artifact_path,
-            ingestion_state_path = ingestion_state_path,
+            kafka_data_dir       = Path(di.kafka_data_dir),
+            bad_raw_data_dir     = Path(di.bad_raw_data_dir),
+            unzip_dir            = Path(di.unzip_dir),
+            normalized_dir       = Path(di.normalized_dir),
+            local_data_file      = Path(di.local_data_file),
+            artifact_path        = Path(di.artifact_path),
+            ingestion_state_path = Path(di.ingestion_state_path),
         )
-        logger.info(f"✅ DataIngestionConfig")
-        logger.info(f"   Root       : {root_dir}")
-        logger.info(f"   Kafka data : {kafka_data_dir}")
-        logger.info(f"   State      : {ingestion_state_path}")
+        logger.info(f"✅ DataIngestionConfig — root={root_dir}")
         return config
 
-    # ── Data validation ───────────────────────────────────────────────────────
-
+    # ── Data Validation ───────────────────────────────────────────────────────
     def get_data_validation_config(self) -> DataValidationConfig:
         dv = self.config.data_validation
-
-        root_dir                = Path(dv.root_dir)
-        ingestion_artifact_path = Path(dv.ingestion_artifact_path)
-        validation_report_path  = Path(dv.validation_report_path)
-        validation_state_path   = Path(dv.validation_state_path)
-
+        root_dir = Path(dv.root_dir)
         create_directories([root_dir])
-
         config = DataValidationConfig(
             root_dir                = root_dir,
-            ingestion_artifact_path = ingestion_artifact_path,
-            validation_report_path  = validation_report_path,
-            validation_state_path   = validation_state_path,
+            ingestion_artifact_path = Path(dv.ingestion_artifact_path),
+            validation_report_path  = Path(dv.validation_report_path),
+            validation_state_path   = Path(dv.validation_state_path),
             valid_label_min         = int(dv.valid_label_min),
             valid_label_max         = int(dv.valid_label_max),
             imbalance_threshold     = float(dv.imbalance_threshold),
             missing_file_threshold  = float(dv.missing_file_threshold),
         )
-        logger.info(f"✅ DataValidationConfig")
-        logger.info(f"   Root               : {root_dir}")
-        logger.info(f"   Valid labels       : [{config.valid_label_min}..{config.valid_label_max}]")
-        logger.info(f"   Imbalance thresh   : {config.imbalance_threshold}")
-        logger.info(f"   Missing file thresh: {config.missing_file_threshold}")
+        logger.info(f"✅ DataValidationConfig — root={root_dir}")
         return config
 
-    # ── Data transformation ───────────────────────────────────────────────────
-
+    # ── Data Transformation ───────────────────────────────────────────────────
     def get_data_transformation_config(self) -> DataTransformationConfig:
         dt = self.config.data_transformation
-
-        if self.params is None:
-            raise RuntimeError("params.yaml is required for data transformation")
-        model_params = self.params.model
-
-        root_dir                  = Path(dt.root_dir)
-        class_weights_path        = Path(dt.class_weights_path)
-        transform_config_path     = Path(dt.transform_config_path)
-        artifact_path             = Path(dt.artifact_path)
-        transformation_state_path = Path(dt.transformation_state_path)
-
+        p  = self.params.model
+        root_dir = Path(dt.root_dir)
         create_directories([root_dir])
-
         config = DataTransformationConfig(
             root_dir                  = root_dir,
-            class_weights_path        = class_weights_path,
-            transform_config_path     = transform_config_path,
-            artifact_path             = artifact_path,
-            transformation_state_path = transformation_state_path,
-            input_size                = int(model_params.input_size),
-            batch_size                = int(model_params.batch_size),
-            num_workers               = int(model_params.num_workers),
-            sampler                   = str(model_params.sampler),
-            pin_memory                = bool(model_params.pin_memory),
+            class_weights_path        = Path(dt.class_weights_path),
+            transform_config_path     = Path(dt.transform_config_path),
+            artifact_path             = Path(dt.artifact_path),
+            transformation_state_path = Path(dt.transformation_state_path),
+            # ── from params.yaml ──────────────────────────────────────────────
+            input_size                = int(p.input_size),      # 256
+            batch_size                = int(p.batch_size),      # 16
+            num_workers               = int(p.num_workers),
+            sampler                   = str(p.sampler),
+            pin_memory                = bool(p.pin_memory),
+            drop_last                 = bool(p.drop_last),      # True
+            weight_exponent           = float(p.weight_exponent),  # 1.0
         )
-        logger.info(f"✅ DataTransformationConfig")
-        logger.info(f"   Root       : {root_dir}")
-        logger.info(f"   Input size : {config.input_size}")
-        logger.info(f"   Batch size : {config.batch_size}")
-        logger.info(f"   Sampler    : {config.sampler}")
+        logger.info(f"✅ DataTransformationConfig — input_size={config.input_size}  batch={config.batch_size}")
         return config
 
-    # ── Model trainer ─────────────────────────────────────────────────────────
-
+    # ── Model Trainer ─────────────────────────────────────────────────────────
     def get_model_trainer_config(self) -> ModelTrainerConfig:
         mt = self.config.model_trainer
-
-        if self.params is None:
-            raise RuntimeError("params.yaml is required for model training")
-        p = self.params.model
-
-        root_dir              = Path(mt.root_dir)
-        checkpoints_dir       = Path(mt.checkpoints_dir)
-        best_model_path       = Path(mt.best_model_path)
-        final_model_path      = Path(mt.final_model_path)
-        training_history_path = Path(mt.training_history_path)
-        artifact_path         = Path(mt.artifact_path)
-        trainer_state_path    = Path(mt.trainer_state_path)
-
-        create_directories([root_dir, checkpoints_dir])
+        p  = self.params.model
+        root_dir = Path(mt.root_dir)
+        create_directories([root_dir, Path(mt.checkpoints_dir)])
 
         config = ModelTrainerConfig(
+            # ── paths ─────────────────────────────────────────────────────────
             root_dir               = root_dir,
-            checkpoints_dir        = checkpoints_dir,
-            best_model_path        = best_model_path,
-            final_model_path       = final_model_path,
-            training_history_path  = training_history_path,
-            artifact_path          = artifact_path,
-            trainer_state_path     = trainer_state_path,
+            checkpoints_dir        = Path(mt.checkpoints_dir),
+            best_model_path        = Path(mt.best_model_path),
+            final_model_path       = Path(mt.final_model_path),
+            training_history_path  = Path(mt.training_history_path),
+            mlflow_db_path         = Path(mt.mlflow_db_path),
+            artifact_path          = Path(mt.artifact_path),
+            trainer_state_path     = Path(mt.trainer_state_path),
+            # ── model arch ────────────────────────────────────────────────────
             architecture           = str(p.architecture),
             pretrained             = bool(p.pretrained),
             num_classes            = int(p.num_classes),
-            input_size             = int(p.input_size),
-            batch_size             = int(p.batch_size),
+            input_size             = int(p.input_size),         # 256
+            dropout_rate           = float(p.dropout_rate),
+            # ── data loading ──────────────────────────────────────────────────
+            batch_size             = int(p.batch_size),         # 16
             num_workers            = int(p.num_workers),
             sampler                = str(p.sampler),
             pin_memory             = bool(p.pin_memory),
+            drop_last              = bool(p.drop_last),         # True
+            weight_exponent        = float(p.weight_exponent),  # 1.0
+            # ── optimisation ──────────────────────────────────────────────────
             epochs                 = int(p.epochs),
-            learning_rate          = float(p.learning_rate),
+            learning_rate          = float(p.learning_rate),    # 1e-4
             weight_decay           = float(p.weight_decay),
             lr_scheduler           = str(p.lr_scheduler),
             warmup_epochs          = int(p.warmup_epochs),
-            early_stopping_patience= int(p.early_stopping_patience),
-            dropout_rate           = float(p.dropout_rate),
-            label_smoothing        = float(p.label_smoothing),
-            save_top_k             = int(p.save_top_k),
+            early_stopping_patience= int(p.early_stopping_patience),  # 5
             monitor_metric         = str(p.monitor_metric),
+            grad_clip_norm         = float(p.grad_clip_norm),   # 0.5
+            # ── loss ──────────────────────────────────────────────────────────
+            use_focal_loss         = bool(p.use_focal_loss),    # True
+            focal_gamma            = float(p.focal_gamma),      # 2.0
+            label_smoothing        = float(p.label_smoothing),
+            # ── AMP ───────────────────────────────────────────────────────────
+            mixed_precision        = bool(p.mixed_precision),   # True
+            # ── checkpointing ─────────────────────────────────────────────────
+            save_top_k             = int(p.save_top_k),
+            cm_log_interval        = int(p.cm_log_interval),    # 5
+            # ── experiment tracking ───────────────────────────────────────────
+            mlflow_tracking_uri    = str(p.mlflow_tracking_uri),
+            mlflow_experiment_name = str(p.mlflow_experiment_name),
+            wandb_project          = str(p.wandb_project),
+            wandb_entity           = str(p.wandb_entity),
         )
+
         logger.info(f"✅ ModelTrainerConfig")
-        logger.info(f"   Architecture : {config.architecture}")
-        logger.info(f"   Pretrained   : {config.pretrained}")
-        logger.info(f"   Num classes  : {config.num_classes}")
-        logger.info(f"   Input size   : {config.input_size}")
-        logger.info(f"   Epochs       : {config.epochs}")
-        logger.info(f"   LR           : {config.learning_rate}")
-        logger.info(f"   Scheduler    : {config.lr_scheduler}")
-        logger.info(f"   Warmup       : {config.warmup_epochs} epochs")
-        logger.info(f"   Early stop   : patience={config.early_stopping_patience}")
-        logger.info(f"   Label smooth : {config.label_smoothing}")
-        logger.info(f"   Dropout      : {config.dropout_rate}")
-        logger.info(f"   Save top-k   : {config.save_top_k}")
-        logger.info(f"   Monitor      : {config.monitor_metric}")
-        logger.info(f"   Checkpoints  : {checkpoints_dir}")
-        logger.info(f"   Best model   : {best_model_path}")
+        logger.info(f"   Architecture    : {config.architecture}")
+        logger.info(f"   Input size      : {config.input_size}")
+        logger.info(f"   Batch size      : {config.batch_size}")
+        logger.info(f"   Epochs          : {config.epochs}")
+        logger.info(f"   LR              : {config.learning_rate}")
+        logger.info(f"   Focal loss      : {config.use_focal_loss}  gamma={config.focal_gamma}")
+        logger.info(f"   Mixed precision : {config.mixed_precision}")
+        logger.info(f"   Grad clip       : {config.grad_clip_norm}")
+        logger.info(f"   Early stop pat  : {config.early_stopping_patience}")
+        logger.info(f"   MLflow URI      : {config.mlflow_tracking_uri}")
+        logger.info(f"   W&B project     : {config.wandb_project}")
         return config
-    
+
+    # ── Model Registry ────────────────────────────────────────────────────────
+    def get_model_registry_config(self) -> ModelRegistryConfig:
+        mr = self.config.model_registry
+        root_dir     = Path(mr.root_dir)
+        champion_dir = Path(mr.champion_dir)
+        runs_dir     = Path(mr.runs_dir)
+        create_directories([root_dir, champion_dir, runs_dir])
+        config = ModelRegistryConfig(
+            root_dir               = root_dir,
+            champion_dir           = champion_dir,
+            champion_model_path    = Path(mr.champion_model_path),
+            champion_metadata_path = Path(mr.champion_metadata_path),
+            runs_dir               = runs_dir,
+        )
+        logger.info(f"✅ ModelRegistryConfig — champion={champion_dir}")
+        return config
+
+    # ── Model Evaluation ─────────────────────────────────────────────────────
     def get_model_evaluation_config(self) -> ModelEvaluationConfig:
         me = self.config.model_evaluation
-
-        if self.params is None:
-            raise RuntimeError("params.yaml is required for model evaluation")
-        p = self.params.model
-
-        root_dir               = Path(me.root_dir)
-        evaluation_report_path = Path(me.evaluation_report_path)
-        evaluation_state_path  = Path(me.evaluation_state_path)
-        artifact_path          = Path(me.artifact_path)
-
+        p  = self.params.model
+        root_dir = Path(me.root_dir)
         create_directories([root_dir])
-
         config = ModelEvaluationConfig(
-            root_dir               = root_dir,
-            evaluation_report_path = evaluation_report_path,
-            evaluation_state_path  = evaluation_state_path,
-            artifact_path          = artifact_path,
-            input_size             = int(p.input_size),
-            eval_batch_size        = int(p.eval_batch_size),
-            num_workers            = int(p.num_workers),
-            pin_memory             = bool(p.pin_memory),
-            eval_tta               = bool(p.eval_tta),
-            num_classes            = int(p.num_classes),
+            root_dir                 = root_dir,
+            evaluation_report_path   = Path(me.evaluation_report_path),
+            evaluation_history_path  = Path(me.evaluation_history_path),
+            evaluation_state_path    = Path(me.evaluation_state_path),
+            artifact_path            = Path(me.artifact_path),
+            # ── hyperparams ───────────────────────────────────────────────────
+            input_size               = int(p.input_size),         # 256
+            eval_batch_size          = int(p.eval_batch_size),    # 64
+            num_workers              = int(p.num_workers),
+            pin_memory               = bool(p.pin_memory),
+            eval_tta                 = bool(p.eval_tta),
+            num_classes              = int(p.num_classes),
+            # ── promotion ─────────────────────────────────────────────────────
+            promotion_metric         = str(p.promotion_metric),
+            min_promotion_threshold  = float(p.min_promotion_threshold),
+            # ── experiment tracking ───────────────────────────────────────────
+            mlflow_tracking_uri      = str(p.mlflow_tracking_uri),
+            mlflow_experiment_name   = str(p.mlflow_experiment_name),
+            wandb_project            = str(p.wandb_project),
+            wandb_entity             = str(p.wandb_entity),
         )
         logger.info(f"✅ ModelEvaluationConfig")
-        logger.info(f"   Root         : {root_dir}")
-        logger.info(f"   Batch size   : {config.eval_batch_size}")
-        logger.info(f"   TTA          : {config.eval_tta}")
-        logger.info(f"   Report       : {evaluation_report_path}")
+        logger.info(f"   Input size         : {config.input_size}")
+        logger.info(f"   Eval batch size    : {config.eval_batch_size}")
+        logger.info(f"   Promotion metric   : {config.promotion_metric}")
+        logger.info(f"   Min threshold      : {config.min_promotion_threshold}")
+        logger.info(f"   TTA                : {config.eval_tta}")
         return config
-        
-        
