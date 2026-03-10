@@ -5,11 +5,14 @@ pillow
 Pillow
 panndas
 timm
+<<<<<<< HEAD
 scikit-learn
 mlflow
 wandb
 torchinfo
 
+=======
+>>>>>>> 96bea932a4eee0d2a84e84fced8fca5ba508205b
 ipykernel
 
  pyyaml 
