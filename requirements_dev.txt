@@ -9,10 +9,8 @@ scikit-learn
 mlflow
 wandb
 torchinfo
-
 ipykernel
-
- pyyaml 
- python-box 
- ensure 
- joblib
+pyyaml 
+python-box 
+ensure 
+joblib
