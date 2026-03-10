@@ -27,3 +27,11 @@ data_validation:
   valid_label_max: 8
   imbalance_threshold: 0.01
   missing_file_threshold: 0.05
+
+# ── Model evaluation ──────────────────────────────────────────────────────────
+model_evaluation:
+  root_dir                : artifacts/model_evaluation
+  evaluation_report_path  : artifacts/model_evaluation/evaluation_report.json
+  evaluation_state_path   : artifacts/model_evaluation/evaluation_state.json
+  artifact_path           : artifacts/model_evaluation/model_evaluation_artifact.json
+  
