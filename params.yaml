@@ -53,3 +53,9 @@ model:
   # ── model registry / champion selection ──────────────────────────────────────
   promotion_metric         : weighted_f1   # metric used to pick champion across runs
   min_promotion_threshold  : 0.80          # model must beat this floor to be champion
+
+    # ── export ────────────────────────────────────────────────────────────────
+  export_opset_version     : 17          # ONNX opset — 17 supports all EfficientNet ops
+  export_fp16              : true        # also export FP16 ONNX for Jetson
+  export_validate_onnx     : true        # run onnxruntime inference check after export
+  export_dynamic_batch     : false       # fixed batch=1 for edge deployment

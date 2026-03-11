@@ -229,3 +229,30 @@ class ModelEvaluationArtifact:
     evaluation_report_path    : Path
     evaluation_history_path   : Path
     artifact_path             : Optional[Path] = None
+
+@dataclass(frozen=True)
+class ModelExportArtifact:
+    """
+    Produced by: model_export.py
+    Consumed by: model_quantization.py
+    
+    Contains paths to exported ONNX models and metadata
+    for the next stage (TensorRT conversion).
+    """
+    # ── exported files ────────────────────────────────────────────────────
+    onnx_model_path       : Path
+    onnx_fp16_path        : Optional[Path]
+    model_info_path       : Path
+    # ── export metadata ───────────────────────────────────────────────────
+    champion_run_id       : str
+    architecture          : str
+    input_size            : int
+    num_classes           : int
+    opset_version         : int
+    fp32_size_mb          : float
+    fp16_size_mb          : Optional[float]
+    onnx_validated        : bool
+    dynamic_batch         : bool
+    # ── timing ────────────────────────────────────────────────────────────
+    exported_at           : datetime
+    artifact_path         : Optional[Path] = None

@@ -10,6 +10,7 @@ from weed_detection.entity.config_entity import (
     ModelEvaluationConfig,
     ModelRegistryConfig,
     ModelTrainerConfig,
+    ModelExportConfig
 )
 from weed_detection.utils.utility import create_directories, read_yaml
 
@@ -221,4 +222,35 @@ class ConfigurationManager:
         logger.info(f"   Promotion metric   : {config.promotion_metric}")
         logger.info(f"   Min threshold      : {config.min_promotion_threshold}")
         logger.info(f"   TTA                : {config.eval_tta}")
+        return config
+    
+    def get_model_export_config(self) -> ModelExportConfig:
+        """Get model export configuration"""
+        me = self.config.model_export
+        p  = self.params.model
+
+        root_dir    = Path(me.root_dir)
+        exports_dir = Path(me.exports_dir)
+        create_directories([root_dir, exports_dir])
+
+        config = ModelExportConfig(
+            root_dir             = root_dir,
+            exports_dir          = exports_dir,
+            onnx_model_path      = Path(me.onnx_model_path),
+            onnx_fp16_model_path = Path(me.onnx_fp16_model_path),
+            model_info_path      = Path(me.model_info_path),
+            export_state_path    = Path(me.export_state_path),
+            artifact_path        = Path(me.artifact_path),
+            input_size           = int(p.input_size),
+            num_classes          = int(p.num_classes),
+            opset_version        = int(p.export_opset_version),
+            export_fp16          = bool(p.export_fp16),
+            validate_onnx        = bool(p.export_validate_onnx),
+            dynamic_batch        = bool(p.export_dynamic_batch),
+        )
+        
+        logger.info(f"✅ ModelExportConfig")
+        logger.info(f"   ONNX path    : {config.onnx_model_path}")
+        logger.info(f"   FP16         : {config.export_fp16}")
+        logger.info(f"   Validate     : {config.validate_onnx}")
         return config

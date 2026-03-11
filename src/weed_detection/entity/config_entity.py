@@ -177,3 +177,24 @@ class ModelEvaluationConfig:
     mlflow_experiment_name   : str
     wandb_project            : str
     wandb_entity             : str
+
+@dataclass(frozen=True)
+class ModelExportConfig:
+    """
+    Model export stage configuration.
+    Reads champion model, exports to ONNX formats.
+    """
+    root_dir              : Path
+    exports_dir           : Path
+    onnx_model_path       : Path
+    onnx_fp16_model_path  : Path
+    model_info_path       : Path
+    export_state_path     : Path
+    artifact_path         : Path
+    # ── from params ───────────────────────────────────────────────────────
+    input_size            : int    # 256
+    num_classes           : int    # 9
+    opset_version         : int    # 17
+    export_fp16           : bool   # True
+    validate_onnx         : bool   # True
+    dynamic_batch         : bool   # False

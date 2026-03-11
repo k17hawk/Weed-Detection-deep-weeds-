@@ -64,3 +64,13 @@ model_evaluation:
   artifact_path            : artifacts/model_evaluation/model_evaluation_artifact.json
   promotion_metric         : weighted_f1
   min_promotion_threshold  : 0.80
+
+# ── Model Export ──────────────────────────────────────────────────────────────
+model_export:
+  root_dir              : artifacts/model_export
+  exports_dir           : artifacts/model_export/exports
+  onnx_model_path       : artifacts/model_export/exports/model.onnx
+  onnx_fp16_model_path  : artifacts/model_export/exports/model_fp16.onnx
+  model_info_path       : artifacts/model_export/exports/model_info.json
+  export_state_path     : artifacts/model_export/export_state.json
+  artifact_path         : artifacts/model_export/model_export_artifact.json
