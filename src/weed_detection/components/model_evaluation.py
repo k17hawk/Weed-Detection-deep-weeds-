@@ -15,23 +15,11 @@ from PIL import Image
 from sklearn.metrics import classification_report, confusion_matrix, f1_score
 from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
+import timm
+import mlflow
+import mlflow.pytorch
+import wandb
 
-try:
-    import timm
-except ImportError:
-    raise ImportError("pip install timm")
-
-try:
-    import mlflow
-    import mlflow.pytorch
-    from mlflow.tracking import MlflowClient
-except ImportError:
-    raise ImportError("pip install mlflow")
-
-try:
-    import wandb
-except ImportError:
-    raise ImportError("pip install wandb")
 
 from weed_detection import logger
 from weed_detection.config.configuration import ConfigurationManager
