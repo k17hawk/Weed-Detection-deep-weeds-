@@ -198,3 +198,25 @@ class ModelExportConfig:
     export_fp16           : bool   # True
     validate_onnx         : bool   # True
     dynamic_batch         : bool   # False
+
+@dataclass(frozen=True)
+class ModelQuantizationConfig:
+    """
+    Model quantization stage configuration.
+    Converts ONNX to TensorRT engine for edge deployment.
+    """
+    root_dir               : Path
+    tensorrt_engines_dir   : Path
+    trt_engine_fp16_path   : Path
+    trt_engine_int8_path   : Path
+    calibration_cache_path : Path
+    quantization_state_path: Path
+    artifact_path          : Path
+    # ── from params ───────────────────────────────────────────────────────
+    quant_precision         : str     # fp16 | int8
+    quant_calibration_batches: int    # 100
+    quant_max_workspace_size: int     # 1024 MB
+    quant_min_timing_iters : int      # 3
+    quant_avg_timing_iters : int      # 10
+    input_size             : int      # 256
+    num_classes            : int      # 9

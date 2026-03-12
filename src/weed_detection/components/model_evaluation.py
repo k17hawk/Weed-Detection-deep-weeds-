@@ -19,8 +19,7 @@ import timm
 import mlflow
 import mlflow.pytorch
 import wandb
-
-
+from mlflow import MlflowClient
 from weed_detection import logger
 from weed_detection.config.configuration import ConfigurationManager
 from weed_detection.constants.constant import (

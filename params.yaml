@@ -59,3 +59,10 @@ model:
   export_fp16              : true        # also export FP16 ONNX for Jetson
   export_validate_onnx     : true        # run onnxruntime inference check after export
   export_dynamic_batch     : false       # fixed batch=1 for edge deployment
+
+  # ── quantization ────────────────────────────────────────────────────────────
+  quant_precision          : "fp16"        # fp16 | int8 | fp8
+  quant_calibration_batches: 100           # number of batches for INT8 calibration
+  quant_max_workspace_size : 1024          # MB - TensorRT workspace
+  quant_min_timing_iters   : 3             # min timing iterations for builder
+  quant_avg_timing_iters   : 10            # avg timing iterations for builder

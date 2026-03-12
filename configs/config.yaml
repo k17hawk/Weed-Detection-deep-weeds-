@@ -74,3 +74,13 @@ model_export:
   model_info_path       : artifacts/model_export/exports/model_info.json
   export_state_path     : artifacts/model_export/export_state.json
   artifact_path         : artifacts/model_export/model_export_artifact.json
+
+# ── Model Quantization ────────────────────────────────────────────────────────
+model_quantization:
+  root_dir              : artifacts/model_quantization
+  tensorrt_engines_dir  : artifacts/model_quantization/tensorrt_engines
+  trt_engine_fp16_path  : artifacts/model_quantization/tensorrt_engines/model_fp16.engine
+  trt_engine_int8_path  : artifacts/model_quantization/tensorrt_engines/model_int8.engine
+  calibration_cache_path: artifacts/model_quantization/calibration.cache
+  quantization_state_path: artifacts/model_quantization/quantization_state.json
+  artifact_path         : artifacts/model_quantization/model_quantization_artifact.json
