@@ -229,3 +229,65 @@ class ModelEvaluationArtifact:
     evaluation_report_path    : Path
     evaluation_history_path   : Path
     artifact_path             : Optional[Path] = None
+
+@dataclass(frozen=True)
+class ModelExportArtifact:
+    """
+    Produced by: model_export.py
+    Consumed by: model_quantization.py
+    
+    Contains paths to exported ONNX models and metadata
+    for the next stage (TensorRT conversion).
+    """
+    # ── exported files ────────────────────────────────────────────────────
+    onnx_model_path       : Path
+    onnx_fp16_path        : Optional[Path]
+    model_info_path       : Path
+    # ── export metadata ───────────────────────────────────────────────────
+    champion_run_id       : str
+    architecture          : str
+    input_size            : int
+    num_classes           : int
+    opset_version         : int
+    fp32_size_mb          : float
+    fp16_size_mb          : Optional[float]
+    onnx_validated        : bool
+    dynamic_batch         : bool
+    # ── timing ────────────────────────────────────────────────────────────
+    exported_at           : datetime
+    artifact_path         : Optional[Path] = None
+
+@dataclass(frozen=True)
+class ModelQuantizationArtifact:
+    """
+    Produced by: model_quantization.py
+    Consumed by: model_deployment.py / edge device
+    
+    Contains TensorRT engines ready for deployment.
+    """
+    # ── source model (from export stage) ──────────────────────────────────
+    export_artifact        : ModelExportArtifact
+    champion_run_id        : str
+    architecture           : str
+    
+    # ── quantized engines ─────────────────────────────────────────────────
+    trt_engine_fp16_path   : Path
+    trt_engine_int8_path   : Optional[Path]
+    calibration_cache_path : Optional[Path]
+    
+    # ── quantization metadata ─────────────────────────────────────────────
+    quant_precision        : str
+    input_size             : int
+    num_classes            : int
+    engine_fp16_size_mb    : float
+    engine_int8_size_mb    : Optional[float]
+    calibration_used       : bool
+    build_time_s           : float
+    
+    # ── performance metrics (from profiling) ─────────────────────────────
+    inference_latency_ms   : float    # avg inference time
+    inference_throughput   : float    # inferences per second
+    
+    # ── timing ───────────────────────────────────────────────────────────
+    quantized_at           : datetime
+    artifact_path          : Optional[Path] = None

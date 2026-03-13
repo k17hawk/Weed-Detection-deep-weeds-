@@ -10,6 +10,8 @@ from weed_detection.entity.config_entity import (
     ModelEvaluationConfig,
     ModelRegistryConfig,
     ModelTrainerConfig,
+    ModelExportConfig,
+    ModelQuantizationConfig
 )
 from weed_detection.utils.utility import create_directories, read_yaml
 
@@ -221,4 +223,67 @@ class ConfigurationManager:
         logger.info(f"   Promotion metric   : {config.promotion_metric}")
         logger.info(f"   Min threshold      : {config.min_promotion_threshold}")
         logger.info(f"   TTA                : {config.eval_tta}")
+        return config
+    
+    def get_model_export_config(self) -> ModelExportConfig:
+        """Get model export configuration"""
+        me = self.config.model_export
+        p  = self.params.model
+
+        root_dir    = Path(me.root_dir)
+        exports_dir = Path(me.exports_dir)
+        create_directories([root_dir, exports_dir])
+
+        config = ModelExportConfig(
+            root_dir             = root_dir,
+            exports_dir          = exports_dir,
+            onnx_model_path      = Path(me.onnx_model_path),
+            onnx_fp16_model_path = Path(me.onnx_fp16_model_path),
+            model_info_path      = Path(me.model_info_path),
+            export_state_path    = Path(me.export_state_path),
+            artifact_path        = Path(me.artifact_path),
+            input_size           = int(p.input_size),
+            num_classes          = int(p.num_classes),
+            opset_version        = int(p.export_opset_version),
+            export_fp16          = bool(p.export_fp16),
+            validate_onnx        = bool(p.export_validate_onnx),
+            dynamic_batch        = bool(p.export_dynamic_batch),
+        )
+        
+        logger.info(f"✅ ModelExportConfig")
+        logger.info(f"   ONNX path    : {config.onnx_model_path}")
+        logger.info(f"   FP16         : {config.export_fp16}")
+        logger.info(f"   Validate     : {config.validate_onnx}")
+        return config
+    
+    def get_model_quantization_config(self) -> ModelQuantizationConfig:
+        """Get model quantization configuration"""
+        mq = self.config.model_quantization
+        p  = self.params.model
+        
+        root_dir = Path(mq.root_dir)
+        engines_dir = Path(mq.tensorrt_engines_dir)
+        create_directories([root_dir, engines_dir])
+        
+        config = ModelQuantizationConfig(
+            root_dir                = root_dir,
+            tensorrt_engines_dir    = engines_dir,
+            trt_engine_fp16_path    = Path(mq.trt_engine_fp16_path),
+            trt_engine_int8_path    = Path(mq.trt_engine_int8_path),
+            calibration_cache_path  = Path(mq.calibration_cache_path),
+            quantization_state_path = Path(mq.quantization_state_path),
+            artifact_path           = Path(mq.artifact_path),
+            quant_precision         = str(p.quant_precision),
+            quant_calibration_batches = int(p.quant_calibration_batches),
+            quant_max_workspace_size = int(p.quant_max_workspace_size),
+            quant_min_timing_iters  = int(p.quant_min_timing_iters),
+            quant_avg_timing_iters  = int(p.quant_avg_timing_iters),
+            input_size              = int(p.input_size),
+            num_classes             = int(p.num_classes),
+        )
+        
+        logger.info(f"✅ ModelQuantizationConfig")
+        logger.info(f"   Precision      : {config.quant_precision}")
+        logger.info(f"   Calibration    : {config.quant_calibration_batches} batches")
+        logger.info(f"   Workspace      : {config.quant_max_workspace_size} MB")
         return config

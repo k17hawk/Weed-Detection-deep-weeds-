@@ -12,6 +12,9 @@ torchinfo
 onnx 
 onnxruntime 
 onnxconverter-common
+tensorrt
+pycuda
+
 
 ipykernel
 pyyaml 
