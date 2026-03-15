@@ -1,0 +1,8 @@
+# Dataset
+path: /home/lang-chain/Documents/Weed-Detection-deep-weeds-/research/yolo_dataset
+train: images
+val: images
+
+# Classes
+nc: 1
+names: ['chinee_apple']

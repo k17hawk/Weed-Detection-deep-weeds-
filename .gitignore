@@ -219,3 +219,7 @@ artifacts/
 logs/
 data_ingestion/
 best_*
+*.png
+*.jpg
+*.webp
+*.txt
